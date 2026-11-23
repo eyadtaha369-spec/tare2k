@@ -75,8 +75,8 @@ const PM_SHIFT: Partial<Record<AreaCode, Slot>> = {
   delengat: { assembly: "3:00 PM", departure: "3:15 PM" },
   itay: { assembly: "3:00 PM", departure: "3:15 PM" },
   damanhour: { assembly: "4:00 PM", departure: "4:15 PM" },
-  abu_hummus: "tba", // TODO: outbound times
-  kafr_eldawar: "tba", // TODO: outbound times
+  abu_hummus: { assembly: "4:00 PM", departure: "4:15 PM" },
+  kafr_eldawar: { assembly: "4:00 PM", departure: "4:15 PM" },
 };
 
 /** Return trips leave the university at one time for every area. */
