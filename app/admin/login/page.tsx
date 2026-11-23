@@ -2,7 +2,6 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Loader2 } from "lucide-react";
-import { browserClient } from "@/lib/supabase-browser";
 
 export default function Login() {
   const [busy, setBusy] = useState(false);
@@ -13,12 +12,14 @@ export default function Login() {
     setBusy(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
-    const { error } = await browserClient().auth.signInWithPassword({
-      email: String(fd.get("email")),
-      password: String(fd.get("password")),
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: fd.get("name"), password: fd.get("password") }),
     });
-    if (error) {
-      setError(error.message);
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(j.error || "Login failed.");
       setBusy(false);
       return;
     }
@@ -36,16 +37,16 @@ export default function Login() {
           </div>
         </div>
         <div>
-          <label className="label" htmlFor="email">Email</label>
-          <input id="email" name="email" type="email" required className="input" autoComplete="email" />
+          <label className="label" htmlFor="name">Your name <span className="label-ar">الاسم</span></label>
+          <input id="name" name="name" required className="input" autoComplete="name" />
         </div>
         <div>
-          <label className="label" htmlFor="password">Password</label>
+          <label className="label" htmlFor="password">Password <span className="label-ar">كلمة السر</span></label>
           <input id="password" name="password" type="password" required className="input" autoComplete="current-password" />
         </div>
         {error && <div className="rounded-lg bg-red-100 p-2.5 text-sm font-semibold text-red-800">{error}</div>}
         <button className="btn-primary w-full" disabled={busy}>
-          {busy && <Loader2 size={16} className="animate-spin" />} Sign in
+          {busy && <Loader2 size={16} className="animate-spin" />} Sign in | دخول
         </button>
       </form>
     </main>

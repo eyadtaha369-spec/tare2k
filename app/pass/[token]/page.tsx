@@ -2,10 +2,10 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { BadgeCheck, Clock, MapPin } from "lucide-react";
 import PassQR from "@/components/PassQR";
-import { adminDb } from "@/lib/supabase";
+import { sheets } from "@/lib/sheets";
 import { AREAS, AreaCode, spotLabel } from "@/lib/config";
 import { DIRECTION_LABEL, Direction, formatTripDate, tripDef } from "@/lib/trips";
-import { siteUrl } from "@/lib/utils";
+import { Booking, siteUrl } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Boarding Pass — TARE2K", robots: { index: false } };
@@ -14,11 +14,7 @@ export default async function PassPage({ params }: { params: Promise<{ token: st
   const { token } = await params;
   if (!/^[A-Za-z0-9_-]{20,}$/.test(token)) notFound();
 
-  const { data: b } = await adminDb()
-    .from("bookings")
-    .select("full_name, phone, trip_code, trip_date, direction, area, pickup_spot, status, checked_in_at")
-    .eq("pass_token", token)
-    .maybeSingle();
+  const { booking: b } = await sheets<{ booking: Booking | null }>("findByToken", { token }).catch(() => ({ booking: null }));
   if (!b || b.status !== "approved") notFound();
 
   const t = tripDef(b.trip_code);

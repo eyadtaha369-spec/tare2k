@@ -1,28 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { SESSION_COOKIE, verifySession } from "@/lib/session";
 
 export async function middleware(req: NextRequest) {
-  let res = NextResponse.next({ request: req });
-  const supa = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => req.cookies.getAll(),
-        setAll: (list) => {
-          list.forEach(({ name, value }) => req.cookies.set(name, value));
-          res = NextResponse.next({ request: req });
-          list.forEach(({ name, value, options }) => res.cookies.set(name, value, options));
-        },
-      },
-    },
-  );
-  const { data } = await supa.auth.getUser();
-  const isLogin = req.nextUrl.pathname === "/admin/login";
-  if (!data.user && !isLogin) {
-    return NextResponse.redirect(new URL("/admin/login", req.url));
-  }
-  return res;
+  if (req.nextUrl.pathname === "/admin/login") return NextResponse.next();
+  const staff = await verifySession(req.cookies.get(SESSION_COOKIE)?.value).catch(() => null);
+  if (!staff) return NextResponse.redirect(new URL("/admin/login", req.url));
+  return NextResponse.next();
 }
 
 export const config = { matcher: ["/admin/:path*"] };

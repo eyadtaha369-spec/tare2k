@@ -3,7 +3,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ClipboardList, LogOut, QrCode, Settings2, Users } from "lucide-react";
-import { browserClient } from "@/lib/supabase-browser";
 
 const ITEMS = [
   { href: "/admin/requests", en: "Requests", ar: "الطلبات", icon: ClipboardList, admin: true },
@@ -17,7 +16,7 @@ export default function AdminNav({ role, name }: { role: "admin" | "supervisor";
   const items = ITEMS.filter((i) => role === "admin" || !i.admin);
 
   async function signOut() {
-    await browserClient().auth.signOut();
+    await fetch("/api/auth/logout", { method: "POST" });
     window.location.href = "/admin/login";
   }
 

@@ -6,6 +6,23 @@ import { CheckCircle2, Copy, Loader2, Lock, Upload } from "lucide-react";
 import { AREAS, AREA_CODES, AreaCode, PAYMENT } from "@/lib/config";
 import { DIRECTION_LABEL, TripWindow, formatTripDate } from "@/lib/trips";
 
+/** Shrinks large photos in the browser so uploads stay small and fast. */
+async function compressImage(file: File): Promise<File> {
+  if (file.size < 900 * 1024 && /jpe?g|png|webp/.test(file.type)) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bmp.width * scale);
+    canvas.height = Math.round(bmp.height * scale);
+    canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.82));
+    return blob ? new File([blob], "receipt.jpg", { type: "image/jpeg" }) : file;
+  } catch {
+    return file;
+  }
+}
+
 export default function BookingForm({ initialTrips }: { initialTrips: TripWindow[] }) {
   const [trips, setTrips] = useState(initialTrips);
   const [trip, setTrip] = useState("");
@@ -56,9 +73,9 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
     if (!file) return setError("Please upload your transfer receipt. | ارفع صورة إيصال التحويل.");
     const fd = new FormData(e.currentTarget);
     fd.set("trip_code", trip);
-    fd.set("receipt", file);
     setBusy(true);
     try {
+      fd.set("receipt", await compressImage(file));
       const res = await fetch("/api/bookings", { method: "POST", body: fd });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Something went wrong.");
@@ -245,10 +262,10 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
               <>
                 <Upload className="text-neutral-400" />
                 <span className="text-sm font-semibold">Tap to upload image | اضغط لرفع الصورة</span>
-                <span className="text-xs text-neutral-500">JPG, PNG or WEBP · max 5 MB</span>
+                <span className="text-xs text-neutral-500">Screenshot or photo</span>
               </>
             )}
-            <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
+            <input type="file" accept="image/*" className="sr-only"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           </label>
           {file && <p className="mt-1 text-xs text-neutral-500">{file.name} — tap the box to change</p>}

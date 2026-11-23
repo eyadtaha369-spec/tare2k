@@ -27,7 +27,7 @@ export type Booking = {
   phone: string;
   sender_account: string;
   payment_method: "vodafone_cash" | "instapay";
-  receipt_path: string;
+  receipt_file_id: string;
   status: "pending" | "approved" | "rejected";
   reviewed_at: string | null;
   checked_in_at: string | null;

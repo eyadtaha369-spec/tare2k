@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getStaff } from "@/lib/supabase";
+import { getStaff } from "@/lib/auth";
 import RequestsView from "./RequestsView";
 
 export default async function RequestsPage() {

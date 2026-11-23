@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getStaff } from "@/lib/supabase";
+import { getStaff } from "@/lib/auth";
 
 export default async function AdminHome() {
   const staff = await getStaff();
