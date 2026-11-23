@@ -20,7 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   if (!booking) return NextResponse.json({ error: "Pass not found." }, { status: 404 });
   if (!canRequestRefund(booking)) {
     return NextResponse.json(
-      { error: "Cancellation is closed for this trip (less than 6 hours before departure, or already boarded)." },
+      { error: "Booking and refund window for this trip has closed." },
       { status: 409 },
     );
   }

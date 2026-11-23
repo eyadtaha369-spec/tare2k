@@ -40,7 +40,7 @@ export default function CancelBooking({
         <span className="text-xs opacity-90">| إلغاء الحجز وطلب استرداد</span>
       </button>
       <p className="mt-2 text-center text-[11px] text-neutral-400">
-        Available until {deadlineLabel} (6 hours before departure) | متاح حتى ٦ ساعات قبل التحرك
+        Available until {deadlineLabel} (when booking closes) | متاح حتى قفل الحجز
       </p>
 
       {open && (

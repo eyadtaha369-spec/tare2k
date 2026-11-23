@@ -7,8 +7,8 @@ import { sheets } from "@/lib/sheets";
 import { AREAS, AreaCode, spotLabel, timesFor } from "@/lib/config";
 import { DIRECTION_LABEL, Direction, formatTripDate, tripLabel } from "@/lib/trips";
 import { Booking, egp, siteUrl } from "@/lib/utils";
-import { canRequestRefund, formatCairoWall, refundDeadline, REFUND_CUTOFF_HOURS } from "@/lib/refund";
-import { cairoNow } from "@/lib/trips";
+import { canRequestRefund, formatCairoWall, refundDeadline } from "@/lib/refund";
+import SupportContacts from "@/components/SupportContacts";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Boarding Pass — TARE2K", robots: { index: false } };
@@ -22,7 +22,6 @@ export default async function PassPage({ params }: { params: Promise<{ token: st
   if (!b || !SHOWN.includes(b.status)) notFound();
   const cancellable = canRequestRefund(b);
   const deadline = refundDeadline(b);
-  const beforeTrip = cairoNow() < deadline;
 
   const t = tripLabel(b.trip_code);
   const times = timesFor(b.trip_code, b.area as AreaCode);
@@ -112,10 +111,11 @@ export default async function PassPage({ params }: { params: Promise<{ token: st
                 <CancelBooking token={token} senderAccount={b.sender_account} deadlineLabel={formatCairoWall(deadline)} />
               </div>
             ) : (
-              !b.checked_in_at && !beforeTrip && (
-                <p className="mt-5 text-center text-[11px] text-neutral-400">
-                  Cancellation closed — less than {REFUND_CUTOFF_HOURS} hours before departure. | انتهى وقت الإلغاء
-                </p>
+              !b.checked_in_at && (
+                <div className="mt-5 w-full rounded-xl bg-neutral-100 p-3 text-center text-xs font-semibold text-neutral-600">
+                  🔒 Booking and refund window for this trip has closed.
+                  <div className="mt-0.5 font-normal" dir="rtl">انتهى وقت الحجز والإلغاء لهذه الرحلة.</div>
+                </div>
               )
             )}
           </div>
@@ -154,6 +154,9 @@ export default async function PassPage({ params }: { params: Promise<{ token: st
             )}
           </div>
         )}
+        <div className="border-t border-neutral-100 bg-neutral-50 px-5 py-4">
+          <SupportContacts compact />
+        </div>
       </div>
     </main>
   );

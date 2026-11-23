@@ -1,7 +1,6 @@
 import { AreaCode, timesFor } from "./config";
-import { cairoNow } from "./trips";
+import { cairoNow, tripDef } from "./trips";
 
-export const REFUND_CUTOFF_HOURS = 6;
 
 /** "6:10 AM" → minutes after midnight */
 function toMinutes(t: string) {
@@ -22,9 +21,14 @@ export function departureAt(b: { trip_code: string; trip_date: string; area: Are
   return Date.UTC(y, mo - 1, d) + mins * 60_000;
 }
 
-/** Last moment a student can cancel (6 hours before departure). */
-export function refundDeadline(b: { trip_code: string; trip_date: string; area: AreaCode }) {
-  return departureAt(b) - REFUND_CUTOFF_HOURS * 3_600_000;
+/**
+ * Last moment a student can cancel = when that trip's booking window closes (6:00 PM Egypt time):
+ * Saturday → Fri 6 PM · Sunday (both shifts) → Sat 6 PM · Wednesday → Tue 6 PM · Thursday → Wed 6 PM.
+ */
+export function refundDeadline(b: { trip_code: string; trip_date: string }) {
+  const [y, mo, d] = b.trip_date.split("-").map(Number);
+  const daysBefore = tripDef(b.trip_code)?.closeDaysBefore ?? 1;
+  return Date.UTC(y, mo - 1, d) - daysBefore * 86_400_000 + 18 * 3_600_000;
 }
 
 export function canRequestRefund(

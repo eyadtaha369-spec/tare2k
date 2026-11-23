@@ -1,15 +1,14 @@
-import { SUPPORT_WHATSAPP } from "@/lib/config";
+import SupportContacts from "./SupportContacts";
 
 export default function SiteFooter() {
   return (
     <footer className="mt-16 bg-ink text-neutral-300">
-      <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-8 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto grid max-w-5xl gap-6 px-4 py-8 text-sm md:grid-cols-2 md:items-center">
         <div>
-          <span className="font-black tracking-wider text-white">TARE2K</span> — YOUR WAY TO ALAMEIN
+          <span className="text-lg font-black tracking-wider text-white">TARE2K</span>
+          <div className="text-xs font-bold tracking-[0.18em]">YOUR WAY TO ALAMEIN</div>
         </div>
-        <a className="hover:text-white" href={`https://wa.me/${SUPPORT_WHATSAPP}`} target="_blank" rel="noreferrer">
-          WhatsApp support | تواصل معنا
-        </a>
+        <SupportContacts dark />
       </div>
     </footer>
   );

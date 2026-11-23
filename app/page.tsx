@@ -4,6 +4,7 @@ import { ArrowRight, Bus, CalendarClock, MapPin, ShieldCheck, Smartphone, Wallet
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import TripStatusBadge from "@/components/TripStatusBadge";
+import SupportContacts from "@/components/SupportContacts";
 import { AREAS, AREA_CODES, BRAND, areasForTrip, timesFor } from "@/lib/config";
 import { DIRECTION_LABEL, formatTripDate, groupByDay, shiftLabel } from "@/lib/trips";
 import { getWindows } from "@/lib/windows";
@@ -189,6 +190,30 @@ export default async function Home() {
         </div>
         <div className="mt-6 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
           ⚠️ Cash payment on the bus is not accepted. | لا يتم قبول الدفع كاش في الأتوبيس.
+        </div>
+      </section>
+
+      {/* Contact / Help */}
+      <section id="contact" className="bg-white py-12">
+        <div className="mx-auto max-w-5xl px-4">
+          <h2 className="text-2xl font-black">Contact & Help <span className="text-neutral-400">| تواصل معنا</span></h2>
+          <p className="mt-1 text-sm text-neutral-600">
+            Questions about booking, payment or your pass? Call or WhatsApp us.
+            <span className="block" dir="rtl">عندك سؤال عن الحجز أو الدفع أو التذكرة؟ كلمنا أو ابعتلنا واتساب.</span>
+          </p>
+          <div className="mt-5 max-w-2xl">
+            <SupportContacts />
+          </div>
+          <div className="mt-6 rounded-2xl bg-neutral-50 p-4 text-sm ring-1 ring-black/5">
+            <div className="font-bold">Cancellation & refunds | الإلغاء والاسترداد</div>
+            <p className="mt-1 text-neutral-600">
+              You can cancel from your boarding pass link while that trip&apos;s booking window is open
+              (Saturday → Fri 6 PM · Sunday → Sat 6 PM · Wednesday → Tue 6 PM · Thursday → Wed 6 PM).
+            </p>
+            <p className="mt-1 text-neutral-600" dir="rtl">
+              تقدر تلغي من لينك التذكرة طالما الحجز للرحلة لسه مفتوح (السبت حتى الجمعة ٦م · الأحد حتى السبت ٦م · الأربعاء حتى الثلاثاء ٦م · الخميس حتى الأربعاء ٦م).
+            </p>
+          </div>
         </div>
       </section>
 

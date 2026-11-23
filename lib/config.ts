@@ -19,7 +19,11 @@ export const PAYMENT = {
 };
 
 // Supervisor / support WhatsApp shown on the site (international format, no +)
-export const SUPPORT_WHATSAPP = "2010XXXXXXXX"; // TODO
+// Official contact numbers (international digits, no +)
+export const CONTACTS = [
+  { display: "01021848881", intl: "201021848881" },
+  { display: "+20 101 597 7695", intl: "201015977695" },
+];
 
 export type AreaCode = "delengat" | "itay" | "damanhour" | "abu_hummus" | "kafr_eldawar";
 
