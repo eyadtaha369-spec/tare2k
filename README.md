@@ -80,7 +80,7 @@ Enforced both in the UI and on the server (`/api/bookings`), so a closed trip ca
 - Students can cancel from `/pass/<token>` until **6 hours before departure**, as long as they haven't boarded. The cutoff is checked on the server too.
 - Admin → Requests → **Refunds** tab → **Process refund**: amount (defaults to the ticket price), optional reference and screenshot (saved in Drive), then a one-click WhatsApp confirmation.
 - The finance bar at the top of Requests shows collected revenue, refunded total, net revenue and active seats for the selected trip.
-- Ticket price: `PAYMENT.fareEgp` in `lib/config.ts`. Each booking stores the price at booking time.
+- Ticket prices: `DEFAULT_FARE` (190 EGP) and `FARES` (Abu Hummus & Kafr El Dawar 180 EGP) in `lib/config.ts`. Each booking stores its price at booking time.
 
 ## Security
 

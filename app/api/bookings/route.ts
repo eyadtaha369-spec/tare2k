@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sheets } from "@/lib/sheets";
 import { getWindows } from "@/lib/windows";
-import { AREAS, AreaCode, PAYMENT, areasForTrip } from "@/lib/config";
+import { AREAS, AreaCode, areasForTrip, fareFor } from "@/lib/config";
 import { isValidEgyptMobile, toIntlEgypt } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       phone: toIntlEgypt(phone),
       sender_account,
       payment_method,
-      amount: PAYMENT.fareEgp ?? "",
+      amount: fareFor(area),
       receipt: { base64: Buffer.from(await receipt.arrayBuffer()).toString("base64"), mimeType: receipt.type },
     });
     return NextResponse.json({ ok: true, id: r.id, tripDate: win.tripDate });

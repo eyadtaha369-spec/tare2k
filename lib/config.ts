@@ -15,7 +15,6 @@ export const BRAND = {
 export const PAYMENT = {
   // Company numbers that receive payments — valid for BOTH wallet transfers and InstaPay
   receivingNumbers: ["01021848881", "01015977695"],
-  fareEgp: null as number | null, // TODO: set a fare (e.g. 150) to show it on the form, or keep null
 };
 
 // Supervisor / support WhatsApp shown on the site (international format, no +)
@@ -60,6 +59,16 @@ export const AREAS: Record<
     spots: [{ en: "Al-Omda Entrance", ar: "مدخل العمدة" }],
   },
 };
+
+// ─── Ticket prices (EGP, per seat, same for going and return) ───
+export const DEFAULT_FARE = 190;
+export const FARES: Partial<Record<AreaCode, number>> = {
+  abu_hummus: 180,
+  kafr_eldawar: 180,
+};
+export function fareFor(area: AreaCode | string) {
+  return FARES[area as AreaCode] ?? DEFAULT_FARE;
+}
 
 export const AREA_CODES = Object.keys(AREAS) as AreaCode[];
 

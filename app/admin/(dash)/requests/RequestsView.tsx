@@ -5,7 +5,7 @@ import {
   Ban, Check, ExternalLink, ImageIcon, Loader2, MessageCircle, RefreshCw, RotateCcw, Undo2, Upload, Wallet, X,
 } from "lucide-react";
 import TripPicker, { TripSel } from "@/components/TripPicker";
-import { AREAS, PAYMENT, spotLabel, timesText } from "@/lib/config";
+import { AREAS, spotLabel, timesText } from "@/lib/config";
 import { formatTripDate, tripLabel, DIRECTION_LABEL } from "@/lib/trips";
 import {
   Booking, BookingStatus, PAYMENT_LABEL, bookingAmount, egp, tripFinance, whatsappPassLink, whatsappRefundLink,
@@ -128,11 +128,6 @@ export default function RequestsView() {
         <FinCard label="Net trip revenue" ar="صافي الإيراد" value={egp(fin.net)} tone="dark" />
         <FinCard label="Active seats" ar="المقاعد المؤكدة" value={String(fin.activeSeats)} />
       </div>
-      {!PAYMENT.fareEgp && (
-        <div className="mb-4 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">
-          Ticket price isn&apos;t set yet, so revenue shows 0 EGP. Set <code>fareEgp</code> in lib/config.ts.
-        </div>
-      )}
 
       {/* Status tabs */}
       <div className="mb-4 flex gap-1.5 overflow-x-auto pb-1">

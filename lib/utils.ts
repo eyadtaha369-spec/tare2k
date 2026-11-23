@@ -1,4 +1,4 @@
-import { AREAS, AreaCode, PAYMENT, spotLabel, timesFor } from "./config";
+import { AREAS, AreaCode, fareFor, spotLabel, timesFor } from "./config";
 import { DIRECTION_LABEL, Direction, formatTripDate, tripLabel } from "./trips";
 
 /** Normalises Egyptian mobile numbers to international digits (20XXXXXXXXXX). */
@@ -49,9 +49,9 @@ export type Booking = {
 export type BookingStatus = "pending" | "approved" | "rejected" | "refund_requested" | "refunded" | "no_show";
 
 /** Money actually collected for a booking (stored at booking time, falls back to the current fare). */
-export function bookingAmount(b: Pick<Booking, "amount">) {
+export function bookingAmount(b: Pick<Booking, "amount" | "area">) {
   const n = Number(b.amount);
-  return Number.isFinite(n) && b.amount !== "" && b.amount !== undefined ? n : PAYMENT.fareEgp ?? 0;
+  return Number.isFinite(n) && b.amount !== "" && b.amount !== undefined ? n : fareFor(b.area);
 }
 
 /** Statuses where the student's money was received. */

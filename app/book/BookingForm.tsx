@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Clock, Copy, Loader2, Lock, Upload } from "lucide-react";
-import { AREAS, AreaCode, PAYMENT, areasForTrip, timesFor, timesText } from "@/lib/config";
+import { AREAS, AreaCode, PAYMENT, areasForTrip, fareFor, timesFor, timesText } from "@/lib/config";
 import { DIRECTION_LABEL, TripWindow, formatTripDate, groupByDay, shiftLabel } from "@/lib/trips";
 
 /** Shrinks large photos in the browser so uploads stay small and fast. */
@@ -295,9 +295,17 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
           </div>
         </div>
 
-        {PAYMENT.fareEgp && (
-          <div className="text-sm font-bold">Fare | سعر التذكرة: {PAYMENT.fareEgp} EGP</div>
-        )}
+        <div className="flex items-center justify-between rounded-xl bg-brand-50 px-4 py-3 ring-1 ring-brand-100">
+          <div>
+            <div className="text-sm font-bold">Ticket price | سعر التذكرة</div>
+            <div className="text-xs text-neutral-500">
+              {area ? `${AREAS[area].en} — ${AREAS[area].ar}` : "Choose your area above to see the price | اختار منطقتك"}
+            </div>
+          </div>
+          <div className="text-2xl font-black text-brand-600">
+            {area ? <>{fareFor(area)} <span className="text-sm">EGP</span></> : <span className="text-sm font-semibold text-neutral-500">180 – 190 EGP</span>}
+          </div>
+        </div>
 
         <div>
           <span className="label">Payment Method <span className="label-ar">طريقة الدفع</span></span>
@@ -321,11 +329,11 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
         {method && (
           <div className="rounded-2xl bg-ink p-4 text-white">
             <div className="text-sm font-extrabold">
-              {method === "instapay" ? "Send via InstaPay to either number" : "Send from your wallet to either number"}
+              {method === "instapay" ? "Send via InstaPay" : "Send from your wallet"}{area ? ` ${fareFor(area)} EGP` : ""} to either number
             </div>
             <div className="text-sm text-neutral-300" dir="rtl">
               {method === "instapay" ? "حوّل بإنستاباي على أي رقم من دول" : "حوّل من محفظتك (فودافون كاش أو أي محفظة) على أي رقم من دول"}
-              {PAYMENT.fareEgp ? ` — ${PAYMENT.fareEgp} جنيه` : ""}
+              {area ? ` — المبلغ ${fareFor(area)} جنيه` : ""}
             </div>
             <div className="mt-3 space-y-2">
               {PAYMENT.receivingNumbers.map((n) => (

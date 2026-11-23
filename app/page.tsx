@@ -5,7 +5,7 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import TripStatusBadge from "@/components/TripStatusBadge";
 import SupportContacts from "@/components/SupportContacts";
-import { AREAS, AREA_CODES, BRAND, areasForTrip, timesFor } from "@/lib/config";
+import { AREAS, AREA_CODES, BRAND, areasForTrip, fareFor, timesFor } from "@/lib/config";
 import { DIRECTION_LABEL, formatTripDate, groupByDay, shiftLabel } from "@/lib/trips";
 import { getWindows } from "@/lib/windows";
 
@@ -152,7 +152,10 @@ export default async function Home() {
               <div key={code} className="card overflow-hidden">
                 <div className="bg-gradient-to-r from-brand-600 to-brand-500 px-4 py-3 text-white">
                   <div className="font-extrabold">{AREAS[code].en}</div>
-                  <div className="text-sm opacity-90">{AREAS[code].ar} ⇄ العلمين</div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="opacity-90">{AREAS[code].ar} ⇄ العلمين</span>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-xs font-black text-brand-600">{fareFor(code)} EGP</span>
+                  </div>
                 </div>
                 <ul className="divide-y divide-neutral-100 px-4 py-2">
                   {AREAS[code].spots.map((s) => (
