@@ -1,0 +1,141 @@
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, Bus, CalendarClock, MapPin, ShieldCheck, Smartphone, Wallet } from "lucide-react";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
+import TripStatusBadge from "@/components/TripStatusBadge";
+import { AREAS, AREA_CODES, BRAND, DEPARTURE_TIMES } from "@/lib/config";
+import { DIRECTION_LABEL, formatTripDate } from "@/lib/trips";
+import { getWindows } from "@/lib/windows";
+
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const windows = await getWindows().catch(() => []);
+
+  return (
+    <>
+      <SiteHeader />
+
+      {/* Hero */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-white to-brand-50">
+        <div className="mx-auto grid max-w-5xl items-center gap-8 px-4 py-12 md:grid-cols-2 md:py-20">
+          <div>
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-700">
+              <Bus size={14} /> AIU Student Transport | مواصلات طلاب جامعة العلمين
+            </p>
+            <h1 className="text-5xl font-black tracking-wider text-brand-600 md:text-6xl">TARE2K</h1>
+            <p className="mt-1 text-lg font-extrabold tracking-[0.2em] text-ink">{BRAND.slogan}</p>
+            <p className="mt-1 text-lg font-bold text-neutral-600" dir="rtl">{BRAND.sloganAr}</p>
+            <p className="mt-5 max-w-md text-neutral-700">
+              Safe, on-time weekly buses from Damanhour, Itay El Barud – Abu Hummus and Delengat to{" "}
+              {BRAND.destination} and back.
+            </p>
+            <p className="mt-2 max-w-md text-neutral-600" dir="rtl">
+              رحلات أسبوعية آمنة ومنتظمة من دمنهور وإيتاي البارود – أبو حمص والدلنجات إلى {BRAND.destinationAr} والعودة.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link href="/book" className="btn-primary !px-6 !py-3 text-base">
+                Book your seat | احجز مقعدك <ArrowRight size={18} />
+              </Link>
+              <a href="#schedule" className="btn-ghost !px-6 !py-3 text-base">Schedule | المواعيد</a>
+            </div>
+          </div>
+          <div className="mx-auto w-64 md:w-80">
+            <Image src="/logo.jpg" alt="TARE2K bus" width={500} height={500} priority className="rounded-full shadow-xl ring-8 ring-white" />
+          </div>
+        </div>
+      </section>
+
+      {/* Live trips */}
+      <section id="schedule" className="mx-auto max-w-5xl px-4 py-12">
+        <h2 className="text-2xl font-black">Weekly Trips <span className="text-neutral-400">| الرحلات الأسبوعية</span></h2>
+        <p className="mt-1 text-sm text-neutral-600">Booking windows follow Egypt time. مواعيد الحجز بتوقيت مصر.</p>
+
+        <div className="mt-6 grid gap-6 md:grid-cols-2">
+          {(["outbound", "return"] as const).map((dir) => (
+            <div key={dir} className="card p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-extrabold">
+                  {DIRECTION_LABEL[dir].en}
+                  <span className="block text-sm font-semibold text-neutral-500">{DIRECTION_LABEL[dir].ar}</span>
+                </h3>
+                <span className="chip bg-ink text-white">
+                  Departs {dir === "outbound" ? DEPARTURE_TIMES.outbound : DEPARTURE_TIMES.return}
+                </span>
+              </div>
+              <ul className="space-y-3">
+                {windows.filter((w) => w.direction === dir).map((w) => (
+                  <li key={w.code} className="rounded-xl bg-neutral-50 p-3.5 ring-1 ring-black/5">
+                    <div className="flex items-center justify-between">
+                      <div className="font-bold">
+                        {w.en} <span className="text-neutral-500">| {w.ar}</span>
+                        <span className="ml-2 text-xs font-medium text-neutral-500">{formatTripDate(w.tripDate)}</span>
+                      </div>
+                      <TripStatusBadge open={w.isOpen} />
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-neutral-600">
+                      <CalendarClock size={13} /> Booking: {w.openLabel} → {w.closeLabel}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Routes & stops */}
+      <section className="bg-white py-12">
+        <div className="mx-auto max-w-5xl px-4">
+          <h2 className="text-2xl font-black">Routes & Pickup Stops <span className="text-neutral-400">| الخطوط ونقاط الركوب</span></h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {AREA_CODES.map((code) => (
+              <div key={code} className="card overflow-hidden">
+                <div className="bg-gradient-to-r from-brand-600 to-brand-500 px-4 py-3 text-white">
+                  <div className="font-extrabold">{AREAS[code].en}</div>
+                  <div className="text-sm opacity-90">{AREAS[code].ar} ⇄ العلمين</div>
+                </div>
+                <ul className="divide-y divide-neutral-100 px-4 py-2">
+                  {AREAS[code].spots.map((s) => (
+                    <li key={s.en} className="flex items-start gap-2 py-2 text-sm">
+                      <MapPin size={15} className="mt-0.5 shrink-0 text-brand-500" />
+                      <span>{s.en} <span className="text-neutral-500">— {s.ar}</span></span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="mx-auto max-w-5xl px-4 py-12">
+        <h2 className="text-2xl font-black">How it works <span className="text-neutral-400">| طريقة الحجز</span></h2>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { icon: CalendarClock, en: "Pick an open trip", ar: "اختار رحلة متاحة" },
+            { icon: Wallet, en: "Transfer via Vodafone Cash or InstaPay", ar: "حوّل فودافون كاش أو إنستاباي" },
+            { icon: ShieldCheck, en: "Upload receipt — we verify it", ar: "ارفع الإيصال ونراجعه" },
+            { icon: Smartphone, en: "Get your QR pass on WhatsApp", ar: "استلم تذكرة QR على واتساب" },
+          ].map((s, i) => (
+            <div key={i} className="card p-5">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100 text-brand-600">
+                <s.icon size={20} />
+              </div>
+              <div className="text-xs font-bold text-brand-600">STEP {i + 1}</div>
+              <div className="font-bold">{s.en}</div>
+              <div className="text-sm text-neutral-500" dir="rtl">{s.ar}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+          ⚠️ Cash payment on the bus is not accepted. | لا يتم قبول الدفع كاش في الأتوبيس.
+        </div>
+      </section>
+
+      <SiteFooter />
+    </>
+  );
+}
