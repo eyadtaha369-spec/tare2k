@@ -8,7 +8,7 @@ import { formatTripDate, tripLabel } from "@/lib/trips";
 import { Booking } from "@/lib/utils";
 
 type Result = {
-  result: "boarded" | "already" | "invalid" | "wrong_trip" | "valid";
+  result: "boarded" | "already" | "invalid" | "wrong_trip" | "valid" | "cancelled";
   message?: string;
   booking?: Booking;
 };
@@ -19,6 +19,7 @@ const STYLE = {
   already: { bg: "bg-amber-500", icon: AlertTriangle, en: "ALREADY USED", ar: "مستخدمة من قبل" },
   wrong_trip: { bg: "bg-amber-500", icon: AlertTriangle, en: "WRONG TRIP", ar: "رحلة مختلفة" },
   invalid: { bg: "bg-red-600", icon: XCircle, en: "INVALID", ar: "غير صالحة" },
+  cancelled: { bg: "bg-red-700", icon: XCircle, en: "DO NOT BOARD", ar: "تذكرة ملغاة — ممنوع الركوب" },
 };
 
 const READER_ID = "tare2k-reader";

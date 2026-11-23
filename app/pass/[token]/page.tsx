@@ -1,11 +1,14 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { BadgeCheck, Clock, MapPin } from "lucide-react";
+import { BadgeCheck, Ban, CheckCircle2, Clock, Hourglass, MapPin } from "lucide-react";
+import CancelBooking from "./CancelBooking";
 import PassQR from "@/components/PassQR";
 import { sheets } from "@/lib/sheets";
 import { AREAS, AreaCode, spotLabel, timesFor } from "@/lib/config";
 import { DIRECTION_LABEL, Direction, formatTripDate, tripLabel } from "@/lib/trips";
-import { Booking, siteUrl } from "@/lib/utils";
+import { Booking, egp, siteUrl } from "@/lib/utils";
+import { canRequestRefund, formatCairoWall, refundDeadline, REFUND_CUTOFF_HOURS } from "@/lib/refund";
+import { cairoNow } from "@/lib/trips";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Boarding Pass — TARE2K", robots: { index: false } };
@@ -15,7 +18,11 @@ export default async function PassPage({ params }: { params: Promise<{ token: st
   if (!/^[A-Za-z0-9_-]{20,}$/.test(token)) notFound();
 
   const { booking: b } = await sheets<{ booking: Booking | null }>("findByToken", { token }).catch(() => ({ booking: null }));
-  if (!b || b.status !== "approved") notFound();
+  const SHOWN = ["approved", "refund_requested", "refunded", "no_show"];
+  if (!b || !SHOWN.includes(b.status)) notFound();
+  const cancellable = canRequestRefund(b);
+  const deadline = refundDeadline(b);
+  const beforeTrip = cairoNow() < deadline;
 
   const t = tripLabel(b.trip_code);
   const times = timesFor(b.trip_code, b.area as AreaCode);
@@ -82,23 +89,71 @@ export default async function PassPage({ params }: { params: Promise<{ token: st
           <span className="absolute -right-3 -top-3 h-6 w-6 rounded-full bg-brand-700" />
         </div>
 
-        <div className="flex flex-col items-center px-5 py-6">
-          <div className="rounded-2xl bg-white p-2 ring-1 ring-black/10">
-            <PassQR value={`${siteUrl()}/pass/${token}`} />
+        {b.status === "approved" ? (
+          <div className="flex flex-col items-center px-5 py-6">
+            <div className="rounded-2xl bg-white p-2 ring-1 ring-black/10">
+              <PassQR value={`${siteUrl()}/pass/${token}`} />
+            </div>
+            {b.checked_in_at ? (
+              <div className="mt-4 flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-800">
+                <BadgeCheck size={16} /> Boarded | تم الركوب
+              </div>
+            ) : (
+              <div className="mt-4 flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-sm font-bold text-brand-700">
+                <Clock size={16} /> Show this to the supervisor | اعرضه على المشرف
+              </div>
+            )}
+            <p className="mt-3 text-center text-xs text-neutral-500">
+              Valid for one boarding only. Do not share this pass. | صالحة لمرة ركوب واحدة.
+            </p>
+
+            {cancellable ? (
+              <div className="mt-6 w-full border-t border-neutral-100 pt-5">
+                <CancelBooking token={token} senderAccount={b.sender_account} deadlineLabel={formatCairoWall(deadline)} />
+              </div>
+            ) : (
+              !b.checked_in_at && !beforeTrip && (
+                <p className="mt-5 text-center text-[11px] text-neutral-400">
+                  Cancellation closed — less than {REFUND_CUTOFF_HOURS} hours before departure. | انتهى وقت الإلغاء
+                </p>
+              )
+            )}
           </div>
-          {b.checked_in_at ? (
-            <div className="mt-4 flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-800">
-              <BadgeCheck size={16} /> Boarded | تم الركوب
-            </div>
-          ) : (
-            <div className="mt-4 flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-sm font-bold text-brand-700">
-              <Clock size={16} /> Show this to the supervisor | اعرضه على المشرف
-            </div>
-          )}
-          <p className="mt-3 text-center text-xs text-neutral-500">
-            Valid for one boarding only. Do not share this pass. | صالحة لمرة ركوب واحدة.
-          </p>
-        </div>
+        ) : (
+          <div className="px-5 py-6">
+            {b.status === "refund_requested" && (
+              <div className="rounded-2xl bg-amber-50 p-5 text-center ring-1 ring-amber-200">
+                <Hourglass className="mx-auto text-amber-600" size={36} />
+                <div className="mt-2 text-lg font-black text-amber-900">⏳ Refund Requested</div>
+                <div className="font-bold text-amber-800">تم طلب الاسترداد</div>
+                <p className="mt-2 text-sm text-amber-900">
+                  Your pass is cancelled and the admin will transfer your refund shortly.
+                </p>
+                <p className="mt-1 text-sm text-amber-900" dir="rtl">تم إلغاء تذكرتك، وسيتم تحويل المبلغ قريباً.</p>
+                {b.refund_account && (
+                  <p className="mt-3 text-xs text-amber-800">Refund to | التحويل إلى: <b dir="ltr">{b.refund_account}</b></p>
+                )}
+              </div>
+            )}
+            {b.status === "refunded" && (
+              <div className="rounded-2xl bg-emerald-50 p-5 text-center ring-1 ring-emerald-200">
+                <CheckCircle2 className="mx-auto text-emerald-600" size={36} />
+                <div className="mt-2 text-lg font-black text-emerald-900">Refunded | تم الاسترداد</div>
+                <p className="mt-2 text-sm text-emerald-900">
+                  {egp(Number(b.refund_amount) || 0)} sent to <b dir="ltr">{b.refund_account || b.sender_account}</b>.
+                </p>
+                <p className="mt-1 text-xs text-emerald-800">This pass is cancelled. | هذه التذكرة ملغاة.</p>
+              </div>
+            )}
+            {b.status === "no_show" && (
+              <div className="rounded-2xl bg-neutral-100 p-5 text-center">
+                <Ban className="mx-auto text-neutral-500" size={36} />
+                <div className="mt-2 text-lg font-black">No-show | لم يتم الركوب</div>
+                <p className="mt-1 text-sm text-neutral-600">This pass is no longer valid. | هذه التذكرة لم تعد صالحة.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </main>
   );

@@ -1,4 +1,4 @@
-import { AREAS, AreaCode, spotLabel, timesFor } from "./config";
+import { AREAS, AreaCode, PAYMENT, spotLabel, timesFor } from "./config";
 import { DIRECTION_LABEL, Direction, formatTripDate, tripLabel } from "./trips";
 
 /** Normalises Egyptian mobile numbers to international digits (20XXXXXXXXXX). */
@@ -28,12 +28,65 @@ export type Booking = {
   sender_account: string;
   payment_method: "vodafone_cash" | "instapay";
   receipt_file_id: string;
-  status: "pending" | "approved" | "rejected";
+  status: BookingStatus;
   reviewed_at: string | null;
   checked_in_at: string | null;
   created_at: string;
   receipt_url?: string | null;
+  // Payments & refunds
+  amount?: string;
+  refund_account?: string;
+  refund_reason?: string;
+  refund_requested_at?: string;
+  refund_amount?: string;
+  refund_ref?: string;
+  refund_receipt_file_id?: string;
+  refund_receipt_url?: string | null;
+  refunded_at?: string;
+  refunded_by?: string;
 };
+
+export type BookingStatus = "pending" | "approved" | "rejected" | "refund_requested" | "refunded" | "no_show";
+
+/** Money actually collected for a booking (stored at booking time, falls back to the current fare). */
+export function bookingAmount(b: Pick<Booking, "amount">) {
+  const n = Number(b.amount);
+  return Number.isFinite(n) && b.amount !== "" && b.amount !== undefined ? n : PAYMENT.fareEgp ?? 0;
+}
+
+/** Statuses where the student's money was received. */
+export const PAID_STATUSES: BookingStatus[] = ["approved", "refund_requested", "refunded", "no_show"];
+
+export function tripFinance(rows: Booking[]) {
+  const collected = rows.filter((b) => PAID_STATUSES.includes(b.status)).reduce((a, b) => a + bookingAmount(b), 0);
+  const refunded = rows.filter((b) => b.status === "refunded").reduce((a, b) => a + (Number(b.refund_amount) || 0), 0);
+  return {
+    collected,
+    refunded,
+    net: collected - refunded,
+    activeSeats: rows.filter((b) => b.status === "approved").length,
+    pendingRefunds: rows.filter((b) => b.status === "refund_requested").length,
+  };
+}
+
+export const egp = (n: number) => `${n.toLocaleString("en-US", { maximumFractionDigits: 2 })} EGP`;
+
+export function whatsappRefundLink(b: Booking) {
+  const t = tripLabel(b.trip_code);
+  const msg = [
+    `💸 *TARE2K — Refund Sent | تم تحويل المبلغ المسترد*`,
+    ``,
+    `👤 Name | الاسم: ${b.full_name}`,
+    `🗓️ Cancelled trip | الرحلة الملغاة: ${t.en} — ${t.ar} — ${formatTripDate(b.trip_date)}`,
+    `💰 Amount | المبلغ: ${egp(Number(b.refund_amount) || 0)}`,
+    `📲 Sent to | تم التحويل إلى: ${b.refund_account || b.sender_account}`,
+    ...(b.refund_ref ? [`🧾 Reference | رقم العملية: ${b.refund_ref}`] : []),
+    ``,
+    `Your boarding pass for this trip is cancelled. Thank you for using TARE2K.`,
+    `تم إلغاء تذكرة هذه الرحلة. شكراً لاستخدامك طريقك 🚌`,
+  ].join("\n");
+  return `https://wa.me/${toIntlEgypt(b.phone)}?text=${encodeURIComponent(msg)}`;
+}
 
 export const PAYMENT_LABEL = { vodafone_cash: "Vodafone Cash", instapay: "InstaPay" } as const;
 

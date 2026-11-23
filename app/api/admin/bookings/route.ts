@@ -18,7 +18,9 @@ export async function GET(req: Request) {
     const rows = bookings.map((b) => ({
       ...b,
       receipt_url: `/api/admin/receipt/${b.id}`,
+      refund_receipt_url: b.refund_receipt_file_id ? `/api/admin/refund-receipt/${b.id}` : null,
       receipt_file_id: undefined,
+      refund_receipt_file_id: undefined,
     }));
     return NextResponse.json({ bookings: rows, role: staff.role });
   } catch (e) {

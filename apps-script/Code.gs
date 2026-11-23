@@ -19,8 +19,12 @@ var USER_COLS = ['id', 'name', 'username', 'password_hash', 'role', 'is_active',
 var COLS = [
   'id', 'created_at', 'status', 'trip_code', 'trip_date', 'direction', 'area', 'pickup_spot',
   'full_name', 'phone', 'sender_account', 'payment_method', 'receipt_file_id', 'pass_token',
-  'reviewed_at', 'reviewed_by', 'checked_in_at', 'checked_in_by'
+  'reviewed_at', 'reviewed_by', 'checked_in_at', 'checked_in_by',
+  // Payments & refunds
+  'amount', 'refund_account', 'refund_reason', 'refund_requested_at',
+  'refund_amount', 'refund_ref', 'refund_receipt_file_id', 'refunded_at', 'refunded_by'
 ];
+var CANCELLED = ['refund_requested', 'refunded'];
 var OV_COLS = ['trip_code', 'trip_date', 'mode', 'updated_at', 'updated_by'];
 var TZ = 'Africa/Cairo';
 
@@ -54,6 +58,7 @@ function doPost(e) {
     if (!secret || req.secret !== secret) return json_({ error: 'Unauthorized' });
     var fn = ACTIONS[req.action];
     if (!fn) return json_({ error: 'Unknown action' });
+    ensureBookingHeader_();
     return json_(fn(req.payload || {}));
   } catch (err) {
     return json_({ error: String(err && err.message || err) });
@@ -69,6 +74,9 @@ var ACTIONS = {
   getReceipt: getReceipt_,
   getOverrides: getOverrides_,
   setOverride: setOverride_,
+  requestRefund: requestRefund_,
+  processRefund: processRefund_,
+  getRefundReceipt: getRefundReceipt_,
   listUsers: listUsers_,
   getUserByUsername: getUserByUsername_,
   getUser: getUser_,
@@ -100,7 +108,8 @@ function createBooking_(p) {
       trip_code: p.trip_code, trip_date: p.trip_date, direction: p.direction, area: p.area,
       pickup_spot: p.pickup_spot, full_name: p.full_name, phone: p.phone,
       sender_account: p.sender_account, payment_method: p.payment_method, receipt_file_id: file.getId(),
-      pass_token: '', reviewed_at: '', reviewed_by: '', checked_in_at: '', checked_in_by: ''
+      pass_token: '', reviewed_at: '', reviewed_by: '', checked_in_at: '', checked_in_by: '',
+      amount: p.amount === undefined || p.amount === null ? '' : String(p.amount)
     };
     appendText_(sheet_(BOOKINGS), COLS.map(function (c) { return rec[c]; }));
     return { ok: true, id: id };
@@ -133,23 +142,84 @@ function updateStatus_(p) {
     var found = findRow_('id', p.id);
     if (!found) return { error: 'Not found' };
     var r = found.record;
-    r.status = p.status;
+    var now = new Date().toISOString();
     if (p.status === 'approved') {
+      if (r.status !== 'pending' && r.status !== 'rejected' && r.status !== 'no_show') return { error: 'Only pending, rejected or no-show bookings can be approved.' };
       if (!r.pass_token) r.pass_token = p.pass_token;
-      r.reviewed_at = new Date().toISOString();
-      r.reviewed_by = p.by || '';
+      r.reviewed_at = now; r.reviewed_by = p.by || '';
     } else if (p.status === 'rejected') {
-      r.reviewed_at = new Date().toISOString();
-      r.reviewed_by = p.by || '';
+      if (r.status !== 'pending') return { error: 'Only pending bookings can be rejected.' };
+      r.reviewed_at = now; r.reviewed_by = p.by || '';
+    } else if (p.status === 'no_show') {
+      if (r.status !== 'approved' || r.checked_in_at) return { error: 'Only approved passengers who did not board can be marked no-show.' };
+      r.reviewed_at = now; r.reviewed_by = p.by || '';
+    } else if (p.status === 'pending') {
+      if (r.status !== 'rejected' && r.status !== 'approved') return { error: 'This booking cannot be moved back to pending.' };
+      if (r.checked_in_at) return { error: 'Passenger already boarded.' };
+      r.reviewed_at = ''; r.reviewed_by = '';
     } else {
-      r.reviewed_at = '';
-      r.reviewed_by = '';
+      return { error: 'Unknown status' };
     }
+    r.status = p.status;
     writeRow_(found.row, r);
     return { booking: r };
   } finally {
     lock.releaseLock();
   }
+}
+
+/** Student cancels from their pass page. The server has already checked the 6-hour cutoff. */
+function requestRefund_(p) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var found = findRow_('pass_token', p.token);
+    if (!found) return { error: 'Pass not found.' };
+    var r = found.record;
+    if (r.status !== 'approved') return { error: 'This booking can no longer be cancelled.' };
+    if (r.checked_in_at) return { error: 'You already boarded this trip.' };
+    r.status = 'refund_requested';
+    r.refund_account = p.refund_account;
+    r.refund_reason = p.refund_reason || '';
+    r.refund_requested_at = new Date().toISOString();
+    writeRow_(found.row, r);
+    return { booking: r };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Admin confirms the refund transfer. */
+function processRefund_(p) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var found = findRow_('id', p.id);
+    if (!found) return { error: 'Not found' };
+    var r = found.record;
+    if (r.status !== 'refund_requested') return { error: 'Only refund requests can be refunded.' };
+    if (p.receipt && p.receipt.base64) {
+      var blob = Utilities.newBlob(Utilities.base64Decode(p.receipt.base64), p.receipt.mimeType,
+        'REFUND_' + r.trip_date + '_' + r.phone + '_' + r.id.slice(0, 8));
+      r.refund_receipt_file_id = receiptsFolder_().createFile(blob).getId();
+    }
+    r.status = 'refunded';
+    r.refund_amount = String(p.amount);
+    r.refund_ref = p.ref || '';
+    r.refunded_at = new Date().toISOString();
+    r.refunded_by = p.by || '';
+    writeRow_(found.row, r);
+    return { booking: r };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getRefundReceipt_(p) {
+  var found = findRow_('id', p.id);
+  if (!found || !found.record.refund_receipt_file_id) return { error: 'Not found' };
+  var blob = DriveApp.getFileById(found.record.refund_receipt_file_id).getBlob();
+  return { mimeType: blob.getContentType(), base64: Utilities.base64Encode(blob.getBytes()) };
 }
 
 function checkin_(p) {
@@ -163,6 +233,9 @@ function checkin_(p) {
     var found = findRow_('pass_token', p.token);
     if (!found) return { result: 'invalid', message: 'Pass not found.' };
     var b = found.record;
+    if (CANCELLED.indexOf(b.status) >= 0) {
+      return { result: 'cancelled', message: 'CANCELLED / REFUNDED TICKET - DO NOT BOARD', booking: b };
+    }
     if (b.status !== 'approved') return { result: 'invalid', message: 'Booking is ' + b.status + '.', booking: b };
     if (p.trip_code && p.trip_date && (b.trip_code !== p.trip_code || b.trip_date !== p.trip_date)) {
       return { result: 'wrong_trip', message: 'This pass is for a different trip.', booking: b };
@@ -305,6 +378,15 @@ function deleteUser_(p) {
 }
 
 /* ───────────── Helpers ───────────── */
+
+/** Adds any new columns to the Bookings header (safe to run on every request). */
+function ensureBookingHeader_() {
+  var sh = SpreadsheetApp.getActive().getSheetByName(BOOKINGS);
+  if (!sh) return;
+  var head = sh.getRange(1, 1, 1, COLS.length).getValues()[0];
+  if (str_(head[COLS.length - 1]) === COLS[COLS.length - 1]) return;
+  sh.getRange(1, 1, 1, COLS.length).setValues([COLS]).setFontWeight('bold').setBackground('#a31515').setFontColor('#ffffff');
+}
 
 function sheet_(name) {
   var sh = SpreadsheetApp.getActive().getSheetByName(name);

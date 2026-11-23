@@ -5,7 +5,7 @@ import { sheets } from "@/lib/sheets";
 
 export const dynamic = "force-dynamic";
 
-const STATUS: Record<string, string> = { approve: "approved", reject: "rejected", pending: "pending" };
+const STATUS: Record<string, string> = { approve: "approved", reject: "rejected", pending: "pending", no_show: "no_show" };
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const staff = await getStaff();
@@ -21,8 +21,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       pass_token: randomBytes(32).toString("base64url"),
       by: staff.name,
     });
-    return NextResponse.json({ booking: { ...booking, receipt_url: `/api/admin/receipt/${id}` } });
+    return NextResponse.json({
+      booking: {
+        ...booking,
+        receipt_url: `/api/admin/receipt/${id}`,
+        refund_receipt_url: booking.refund_receipt_file_id ? `/api/admin/refund-receipt/${id}` : null,
+      },
+    });
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+    return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
 }

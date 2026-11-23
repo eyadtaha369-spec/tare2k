@@ -66,6 +66,22 @@ You can also see and edit everything directly in the Google Sheet.
 
 Enforced both in the UI and on the server (`/api/bookings`), so a closed trip can't be booked even with a direct request. Logic: `lib/trips.ts`.
 
+## Booking statuses, cancellations & refunds
+
+| Status | Meaning | QR pass | In manifest |
+|---|---|---|---|
+| `pending` | Waiting for admin review | — | No |
+| `approved` | Paid & confirmed | ✅ Valid | Yes |
+| `rejected` | Transfer not accepted | — | No |
+| `refund_requested` | Student cancelled from their pass page | ❌ "CANCELLED / REFUNDED – DO NOT BOARD" | No |
+| `refunded` | Admin transferred the money back | ❌ Same | No |
+| `no_show` | Approved but didn't board (marked by admin) | ❌ Invalid | No |
+
+- Students can cancel from `/pass/<token>` until **6 hours before departure**, as long as they haven't boarded. The cutoff is checked on the server too.
+- Admin → Requests → **Refunds** tab → **Process refund**: amount (defaults to the ticket price), optional reference and screenshot (saved in Drive), then a one-click WhatsApp confirmation.
+- The finance bar at the top of Requests shows collected revenue, refunded total, net revenue and active seats for the selected trip.
+- Ticket price: `PAYMENT.fareEgp` in `lib/config.ts`. Each booking stores the price at booking time.
+
 ## Security
 
 - The browser never talks to Google directly: all reads/writes go through Next.js server routes, which call Apps Script with a shared secret.
