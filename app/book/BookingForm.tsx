@@ -69,9 +69,27 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
   }, [allowedAreas, area]);
 
   async function copy(text: string) {
-    await navigator.clipboard?.writeText(text).catch(() => {});
-    setCopied(text);
-    setTimeout(() => setCopied(""), 1500);
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch {
+      // Fallback for older phones / in-app browsers (e.g. opened from WhatsApp or Facebook)
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    if (ok) {
+      setCopied(text);
+      setTimeout(() => setCopied(""), 2000);
+    }
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -285,31 +303,47 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
           <span className="label">Payment Method <span className="label-ar">طريقة الدفع</span></span>
           <div className="grid gap-3 sm:grid-cols-2">
             {([
-              { v: "vodafone_cash", name: "Vodafone Cash", ar: "فودافون كاش", acct: PAYMENT.vodafoneCash, color: "bg-red-600" },
-              { v: "instapay", name: "InstaPay", ar: "إنستاباي", acct: PAYMENT.instapay, color: "bg-purple-700" },
+              { v: "vodafone_cash", name: "Vodafone Cash / Wallet", ar: "محفظة إلكترونية", color: "bg-red-600" },
+              { v: "instapay", name: "InstaPay", ar: "إنستاباي", color: "bg-purple-700" },
             ] as const).map((m) => (
-              <label
-                key={m.v}
-                className={`cursor-pointer rounded-xl p-4 ring-2 transition ${method === m.v ? "bg-brand-50 ring-brand-500" : "ring-neutral-200"}`}
-              >
-                <div className="flex items-center gap-2">
-                  <input type="radio" name="payment_method" value={m.v} required checked={method === m.v}
-                    onChange={() => setMethod(m.v)} className="accent-brand-500" />
-                  <span className={`h-2.5 w-2.5 rounded-full ${m.color}`} />
-                  <span className="font-bold">{m.name}</span>
-                  <span className="text-sm text-neutral-500">| {m.ar}</span>
-                </div>
-                <div className="mt-2 flex items-center justify-between rounded-lg bg-neutral-100 px-3 py-2">
-                  <span className="font-mono text-base font-bold" dir="ltr">{m.acct}</span>
-                  <button type="button" onClick={(e) => { e.preventDefault(); copy(m.acct); }}
-                    className="flex items-center gap-1 text-xs font-semibold text-brand-600">
-                    <Copy size={13} /> {copied === m.acct ? "Copied" : "Copy"}
-                  </button>
-                </div>
+              <label key={m.v}
+                className={`flex cursor-pointer items-center gap-2 rounded-xl p-4 ring-2 transition ${method === m.v ? "bg-brand-50 ring-brand-500" : "ring-neutral-200 hover:ring-neutral-300"}`}>
+                <input type="radio" name="payment_method" value={m.v} required checked={method === m.v}
+                  onChange={() => setMethod(m.v)} className="accent-brand-500" />
+                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${m.color}`} />
+                <span className="font-bold">{m.name}</span>
+                <span className="text-sm text-neutral-500">| {m.ar}</span>
               </label>
             ))}
           </div>
         </div>
+
+        {method && (
+          <div className="rounded-2xl bg-ink p-4 text-white">
+            <div className="text-sm font-extrabold">
+              {method === "instapay" ? "Send via InstaPay to either number" : "Send from your wallet to either number"}
+            </div>
+            <div className="text-sm text-neutral-300" dir="rtl">
+              {method === "instapay" ? "حوّل بإنستاباي على أي رقم من دول" : "حوّل من محفظتك (فودافون كاش أو أي محفظة) على أي رقم من دول"}
+              {PAYMENT.fareEgp ? ` — ${PAYMENT.fareEgp} جنيه` : ""}
+            </div>
+            <div className="mt-3 space-y-2">
+              {PAYMENT.receivingNumbers.map((n) => (
+                <div key={n} className="flex items-center justify-between gap-2 rounded-xl bg-white/10 px-3 py-2.5">
+                  <span className="font-mono text-lg font-black tracking-wide sm:text-xl" dir="ltr">{n}</span>
+                  <button type="button" onClick={() => copy(n)}
+                    className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm font-bold transition ${copied === n ? "bg-emerald-500 text-white" : "bg-white text-ink hover:bg-neutral-200"}`}>
+                    {copied === n ? <><CheckCircle2 size={15} /> تم النسخ</> : <><Copy size={15} /> Copy | نسخ</>}
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 text-xs text-neutral-400">
+              ✔ Both numbers accept wallet transfers and InstaPay. | الرقمين بيستقبلوا تحويل المحفظة وإنستاباي.
+              <span className="block">Then upload the transfer screenshot below. | وبعدها ارفع صورة التحويل تحت.</span>
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="label" htmlFor="sender_account">

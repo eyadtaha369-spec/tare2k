@@ -88,7 +88,7 @@ export function whatsappRefundLink(b: Booking) {
   return `https://wa.me/${toIntlEgypt(b.phone)}?text=${encodeURIComponent(msg)}`;
 }
 
-export const PAYMENT_LABEL = { vodafone_cash: "Vodafone Cash", instapay: "InstaPay" } as const;
+export const PAYMENT_LABEL = { vodafone_cash: "Vodafone Cash / Wallet", instapay: "InstaPay" } as const;
 
 export function siteUrl() {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");

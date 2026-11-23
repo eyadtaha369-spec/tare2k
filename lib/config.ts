@@ -13,8 +13,8 @@ export const BRAND = {
 
 // Payment details shown on the booking form
 export const PAYMENT = {
-  vodafoneCash: "010XXXXXXXX", // TODO: company Vodafone Cash number
-  instapay: "tare2k@instapay", // TODO: company InstaPay address
+  // Company numbers that receive payments — valid for BOTH wallet transfers and InstaPay
+  receivingNumbers: ["01021848881", "01015977695"],
   fareEgp: null as number | null, // TODO: set a fare (e.g. 150) to show it on the form, or keep null
 };
 
