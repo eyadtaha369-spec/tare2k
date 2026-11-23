@@ -1,2 +1,2 @@
-import ScannerView from "./ScannerView";
-export default function Page() { return <ScannerView />; }
+import { redirect } from "next/navigation";
+export default function Page() { redirect("/admin/scan"); }

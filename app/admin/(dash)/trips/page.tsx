@@ -4,6 +4,6 @@ import TripsView from "./TripsView";
 
 export default async function Page() {
   const staff = await getStaff();
-  if (staff?.role !== "admin") redirect("/admin/scanner");
+  if (staff?.role !== "admin") redirect("/admin/scan");
   return <TripsView />;
 }

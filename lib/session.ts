@@ -1,7 +1,7 @@
 // Signed staff session cookie (HMAC-SHA256). Works in Edge middleware and Node.
 export const SESSION_COOKIE = "tare2k_staff";
 export type StaffRole = "admin" | "supervisor";
-export type Staff = { role: StaffRole; name: string; exp: number };
+export type Staff = { uid: string; role: StaffRole; name: string; exp: number };
 
 const enc = new TextEncoder();
 
@@ -27,6 +27,10 @@ export async function signSession(s: Staff) {
   return `${body}.${b64url(sig)}`;
 }
 
+/** Paths a supervisor may open. Everything else under /admin is admin-only. */
+export const SUPERVISOR_PAGES = ["/admin/scan"];
+export const SUPERVISOR_APIS = ["/api/admin/checkin"];
+
 export async function verifySession(token?: string | null): Promise<Staff | null> {
   if (!token) return null;
   const [body, sig] = token.split(".");
@@ -35,7 +39,7 @@ export async function verifySession(token?: string | null): Promise<Staff | null
     const ok = await crypto.subtle.verify("HMAC", await key(), fromB64url(sig), enc.encode(body));
     if (!ok) return null;
     const s = JSON.parse(new TextDecoder().decode(fromB64url(body))) as Staff;
-    return s.exp > Date.now() ? s : null;
+    return s.exp > Date.now() && s.uid ? s : null;
   } catch {
     return null;
   }

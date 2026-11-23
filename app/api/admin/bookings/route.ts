@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   const staff = await getStaff();
-  if (!staff) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (staff?.role !== "admin") return NextResponse.json({ error: "Admins only" }, { status: 403 });
   const url = new URL(req.url);
   try {
     const { bookings } = await sheets<{ bookings: Booking[] }>("listBookings", {
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     });
     const rows = bookings.map((b) => ({
       ...b,
-      receipt_url: staff.role === "admin" ? `/api/admin/receipt/${b.id}` : null,
+      receipt_url: `/api/admin/receipt/${b.id}`,
       receipt_file_id: undefined,
     }));
     return NextResponse.json({ bookings: rows, role: staff.role });

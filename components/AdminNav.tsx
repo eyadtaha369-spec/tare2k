@@ -2,13 +2,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, LogOut, QrCode, Settings2, Users } from "lucide-react";
+import { ClipboardList, LogOut, QrCode, Settings2, ShieldCheck, Users } from "lucide-react";
 
 const ITEMS = [
   { href: "/admin/requests", en: "Requests", ar: "الطلبات", icon: ClipboardList, admin: true },
-  { href: "/admin/manifest", en: "Manifests", ar: "كشف الركاب", icon: Users, admin: false },
-  { href: "/admin/scanner", en: "Scanner", ar: "الماسح", icon: QrCode, admin: false },
+  { href: "/admin/manifest", en: "Manifests", ar: "كشف الركاب", icon: Users, admin: true },
+  { href: "/admin/scan", en: "Scanner", ar: "الماسح", icon: QrCode, admin: false },
   { href: "/admin/trips", en: "Trips", ar: "الرحلات", icon: Settings2, admin: true },
+  { href: "/admin/supervisors", en: "Supervisors", ar: "المشرفين", icon: ShieldCheck, admin: true },
 ];
 
 export default function AdminNav({ role, name }: { role: "admin" | "supervisor"; name: string | null }) {
@@ -56,7 +57,7 @@ export default function AdminNav({ role, name }: { role: "admin" | "supervisor";
         </div>
         <button onClick={signOut} aria-label="Sign out"><LogOut size={18} /></button>
       </header>
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-black/10 bg-white md:hidden">
+      {items.length > 1 && <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-black/10 bg-white md:hidden">
         {items.map((i) => {
           const active = path.startsWith(i.href);
           return (
@@ -66,7 +67,7 @@ export default function AdminNav({ role, name }: { role: "admin" | "supervisor";
             </Link>
           );
         })}
-      </nav>
+      </nav>}
     </>
   );
 }

@@ -47,7 +47,9 @@ export default function ScannerView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, ...tripRef.current, confirm: true }),
       });
-      const j: Result = await r.json();
+      if (r.status === 401 || r.status === 403) { window.location.href = "/api/auth/logout"; return; }
+      const j: Result & { revoked?: boolean } = await r.json();
+      if (j.revoked) { window.location.href = "/api/auth/logout"; return; }
       setResult(j);
       if (j.result === "boarded") setCount((c) => c + 1);
       navigator.vibrate?.(j.result === "boarded" ? 120 : [80, 60, 80]);

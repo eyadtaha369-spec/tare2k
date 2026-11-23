@@ -22,7 +22,7 @@ export default function TripPicker({
 
   return (
     <div className="flex flex-wrap gap-2">
-      <select className="input !w-auto !py-2 text-sm" value={value.trip_code}
+      <select className="input min-w-0 max-w-full !py-2 text-sm sm:!w-auto" value={value.trip_code}
         onChange={(e) => {
           const code = e.target.value;
           const u = upcoming.find((t) => t.code === code);

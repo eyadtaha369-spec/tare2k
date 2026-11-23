@@ -3,5 +3,5 @@ import { getStaff } from "@/lib/auth";
 
 export default async function AdminHome() {
   const staff = await getStaff();
-  redirect(staff?.role === "admin" ? "/admin/requests" : "/admin/scanner");
+  redirect(staff?.role === "admin" ? "/admin/requests" : "/admin/scan");
 }

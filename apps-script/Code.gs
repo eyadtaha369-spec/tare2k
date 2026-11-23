@@ -14,6 +14,8 @@
 
 var BOOKINGS = 'Bookings';
 var OVERRIDES = 'Overrides';
+var USERS = 'Users';
+var USER_COLS = ['id', 'name', 'username', 'password_hash', 'role', 'is_active', 'created_at', 'created_by'];
 var COLS = [
   'id', 'created_at', 'status', 'trip_code', 'trip_date', 'direction', 'area', 'pickup_spot',
   'full_name', 'phone', 'sender_account', 'payment_method', 'receipt_file_id', 'pass_token',
@@ -32,6 +34,10 @@ function setup() {
   o.getRange(1, 1, 1, OV_COLS.length).setValues([OV_COLS]).setFontWeight('bold');
   o.setFrozenRows(1);
   o.getRange(2, 1, o.getMaxRows() - 1, OV_COLS.length).setNumberFormat('@');
+  var u = ss.getSheetByName(USERS) || ss.insertSheet(USERS);
+  u.getRange(1, 1, 1, USER_COLS.length).setValues([USER_COLS]).setFontWeight('bold').setBackground('#111111').setFontColor('#ffffff');
+  u.setFrozenRows(1);
+  u.getRange(2, 1, u.getMaxRows() - 1, USER_COLS.length).setNumberFormat('@');
   receiptsFolder_();
 }
 
@@ -62,7 +68,13 @@ var ACTIONS = {
   checkin: checkin_,
   getReceipt: getReceipt_,
   getOverrides: getOverrides_,
-  setOverride: setOverride_
+  setOverride: setOverride_,
+  listUsers: listUsers_,
+  getUserByUsername: getUserByUsername_,
+  getUser: getUser_,
+  createUser: createUser_,
+  setUserActive: setUserActive_,
+  deleteUser: deleteUser_
 };
 
 /* ───────────── Bookings ───────────── */
@@ -141,6 +153,10 @@ function updateStatus_(p) {
 }
 
 function checkin_(p) {
+  if (p.staff_id && p.staff_id !== 'admin') {
+    var u = findUser_('id', p.staff_id);
+    if (!u || u.record.is_active !== 'TRUE') return { result: 'invalid', message: 'Your account is deactivated.', revoked: true };
+  }
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -196,6 +212,92 @@ function setOverride_(p) {
     if (p.mode === 'open' || p.mode === 'closed') {
       appendText_(sh, [p.trip_code, p.trip_date, p.mode, new Date().toISOString(), p.by || '']);
     }
+    return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ───────────── Users (supervisors) ───────────── */
+
+function userSheet_() { return sheet_(USERS); }
+
+function readUsers_() {
+  var sh = userSheet_();
+  var last = sh.getLastRow();
+  if (last < 2) return [];
+  return sh.getRange(2, 1, last - 1, USER_COLS.length).getValues()
+    .filter(function (v) { return v[0]; })
+    .map(function (v) { var r = {}; USER_COLS.forEach(function (c, i) { r[c] = str_(v[i]); }); return r; });
+}
+
+function findUser_(col, value) {
+  if (!value) return null;
+  var sh = userSheet_();
+  var last = sh.getLastRow();
+  if (last < 2) return null;
+  var idx = USER_COLS.indexOf(col);
+  var vals = sh.getRange(2, 1, last - 1, USER_COLS.length).getValues();
+  for (var i = 0; i < vals.length; i++) {
+    if (str_(vals[i][idx]).toLowerCase() === String(value).toLowerCase()) {
+      var r = {}; USER_COLS.forEach(function (c, j) { r[c] = str_(vals[i][j]); });
+      return { row: i + 2, record: r };
+    }
+  }
+  return null;
+}
+
+function publicUser_(u) {
+  return { id: u.id, name: u.name, username: u.username, role: u.role, is_active: u.is_active === 'TRUE', created_at: u.created_at, created_by: u.created_by };
+}
+
+function listUsers_() {
+  return { users: readUsers_().map(publicUser_).sort(function (a, b) { return a.created_at < b.created_at ? 1 : -1; }) };
+}
+
+/** Used only by the server for login — includes the password hash. */
+function getUserByUsername_(p) {
+  var f = findUser_('username', p.username);
+  return { user: f ? f.record : null };
+}
+
+function getUser_(p) {
+  var f = findUser_('id', p.id);
+  return { user: f ? publicUser_(f.record) : null };
+}
+
+function createUser_(p) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    if (findUser_('username', p.username)) return { error: 'username_taken' };
+    var rec = {
+      id: Utilities.getUuid(), name: p.name, username: String(p.username).toLowerCase(),
+      password_hash: p.password_hash, role: 'supervisor', is_active: 'TRUE',
+      created_at: new Date().toISOString(), created_by: p.by || ''
+    };
+    appendText_(userSheet_(), USER_COLS.map(function (c) { return rec[c]; }));
+    return { user: publicUser_(rec) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function setUserActive_(p) {
+  var f = findUser_('id', p.id);
+  if (!f) return { error: 'Not found' };
+  userSheet_().getRange(f.row, USER_COLS.indexOf('is_active') + 1).setNumberFormat('@').setValues([[p.active ? 'TRUE' : 'FALSE']]);
+  f.record.is_active = p.active ? 'TRUE' : 'FALSE';
+  return { user: publicUser_(f.record) };
+}
+
+function deleteUser_(p) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var f = findUser_('id', p.id);
+    if (!f) return { error: 'Not found' };
+    userSheet_().deleteRow(f.row);
     return { ok: true };
   } finally {
     lock.releaseLock();

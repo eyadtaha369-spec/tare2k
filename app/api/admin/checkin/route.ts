@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ result: "invalid", message: "Not a TARE2K boarding pass." });
   }
   try {
-    const r = await sheets("checkin", { token, trip_code, trip_date, confirm: !!confirm, by: staff.name });
+    const r = await sheets("checkin", { token, trip_code, trip_date, confirm: !!confirm, by: staff.name, staff_id: staff.uid });
     return NextResponse.json(r);
   } catch (e) {
     return NextResponse.json({ result: "invalid", message: (e as Error).message });

@@ -15,7 +15,7 @@ export default function Login() {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: fd.get("name"), password: fd.get("password") }),
+      body: JSON.stringify({ username: fd.get("username"), password: fd.get("password") }),
     });
     const j = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -23,7 +23,7 @@ export default function Login() {
       setBusy(false);
       return;
     }
-    window.location.href = "/admin";
+    window.location.href = j.redirect || "/admin";
   }
 
   return (
@@ -37,8 +37,8 @@ export default function Login() {
           </div>
         </div>
         <div>
-          <label className="label" htmlFor="name">Your name <span className="label-ar">الاسم</span></label>
-          <input id="name" name="name" required className="input" autoComplete="name" />
+          <label className="label" htmlFor="username">Username or email <span className="label-ar">اسم المستخدم</span></label>
+          <input id="username" name="username" required className="input" autoComplete="username" autoCapitalize="none" dir="ltr" />
         </div>
         <div>
           <label className="label" htmlFor="password">Password <span className="label-ar">كلمة السر</span></label>

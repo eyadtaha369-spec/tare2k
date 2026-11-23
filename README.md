@@ -14,7 +14,7 @@ Student bus booking system: Damanhour · Itay El Barud – Abu Hummus · Delenga
    - **Deploy → New deployment → Web app** · Execute as: **Me** · Who has access: **Anyone** → Deploy → copy the `/exec` URL.
    - After any later change to the script: **Deploy → Manage deployments → ✏️ → Version: New version → Deploy** (the URL stays the same).
 
-2. **Vercel environment variables** (see `.env.example`): `APPS_SCRIPT_URL`, `APPS_SCRIPT_SECRET`, `ADMIN_PASSWORD`, `SUPERVISOR_PASSWORD`, `SESSION_SECRET`, `NEXT_PUBLIC_SITE_URL`. Redeploy after changing them.
+2. **Vercel environment variables** (see `.env.example`): `APPS_SCRIPT_URL`, `APPS_SCRIPT_SECRET`, `ADMIN_PASSWORD` (optional `ADMIN_USERNAME`, default `admin`), `SESSION_SECRET`, `NEXT_PUBLIC_SITE_URL`. Redeploy after changing them.
 
 3. **Business details** — edit `lib/config.ts`: pickup spots, Vodafone Cash number, InstaPay address, optional fare, support WhatsApp, departure times.
 
@@ -26,9 +26,19 @@ Student bus booking system: Damanhour · Itay El Barud – Abu Hummus · Delenga
 
 > Use TypeScript 5 (already pinned). TypeScript 7 breaks Next.js `@/` path aliases.
 
-## Staff login
+## Staff login & roles
 
-`/admin/login` — enter your name + password. `ADMIN_PASSWORD` gives full access; `SUPERVISOR_PASSWORD` gives Manifests + Scanner only. The name is recorded in the sheet when someone approves or scans a pass.
+Login page: `/admin/login` (username + password).
+
+| Role | How to log in | Access |
+|---|---|---|
+| **Admin** | username `admin` + `ADMIN_PASSWORD` (Vercel env) | Everything: Requests, Manifests & PDF, Scanner, Trips, Supervisors |
+| **Supervisor** | account created by the admin in **Supervisors / المشرفين** | **Scanner only** (`/admin/scan`) |
+
+- Supervisors are stored in the **Users** tab of the Google Sheet. Passwords are saved as scrypt hashes, never plain text.
+- Any other admin URL a supervisor opens redirects to `/admin/scan`; admin APIs return 403 (enforced in `middleware.ts` and again in each page/route).
+- Deactivating or deleting a supervisor takes effect immediately: their next page load or scan signs them out.
+- Supervisor sessions last 16 hours; admin sessions 14 days.
 
 ## Pages
 
@@ -38,9 +48,10 @@ Student bus booking system: Damanhour · Itay El Barud – Abu Hummus · Delenga
 | `/book` | Public | Booking form with time-window lock, cascading area/spot, receipt upload |
 | `/pass/[token]` | Student | Boarding pass with QR (only for approved bookings) |
 | `/admin/requests` | Admin | Pending queue, receipt lightbox, Approve / Reject / Undo, one-click WhatsApp |
-| `/admin/manifest` | Admin + Supervisor | Approved passengers by area → stop, seat counts, PDF export (كشف ركاب) |
-| `/admin/scanner` | Admin + Supervisor | Camera QR scanner — Boarded / Already used / Wrong trip / Invalid |
+| `/admin/manifest` | Admin | Approved passengers by area → stop, seat counts, PDF export (كشف ركاب) |
+| `/admin/scan` | Admin + Supervisor | Camera QR scanner — Boarded / Already used / Wrong trip / Invalid |
 | `/admin/trips` | Admin | Force-open / force-close any upcoming trip, or leave on automatic |
+| `/admin/supervisors` | Admin | Create, activate/deactivate and delete supervisor accounts |
 
 You can also see and edit everything directly in the Google Sheet.
 
