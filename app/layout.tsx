@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "TARE2K — Your Way to Alamein | طريقك إلى العلمين",
-  description: "Student bus service from Damanhour, Itay El Barud - Abu Hummus and Delengat to Alamein International University.",
+  description: "Student bus service from Delengat, Itay El Barud, Damanhour, Abu Hummus and Kafr El Dawar to Alamein International University.",
   icons: { icon: "/logo.jpg" },
 };
 

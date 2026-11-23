@@ -28,11 +28,11 @@ export default async function Home() {
             <p className="mt-1 text-lg font-extrabold tracking-[0.2em] text-ink">{BRAND.slogan}</p>
             <p className="mt-1 text-lg font-bold text-neutral-600" dir="rtl">{BRAND.sloganAr}</p>
             <p className="mt-5 max-w-md text-neutral-700">
-              Safe, on-time weekly buses from Damanhour, Itay El Barud – Abu Hummus and Delengat to{" "}
+              Safe, on-time weekly buses from Delengat, Itay El Barud, Damanhour, Abu Hummus and Kafr El Dawar to{" "}
               {BRAND.destination} and back.
             </p>
             <p className="mt-2 max-w-md text-neutral-600" dir="rtl">
-              رحلات أسبوعية آمنة ومنتظمة من دمنهور وإيتاي البارود – أبو حمص والدلنجات إلى {BRAND.destinationAr} والعودة.
+              رحلات أسبوعية آمنة ومنتظمة من الدلنجات وإيتاي البارود ودمنهور وأبو حمص وكفر الدوار إلى {BRAND.destinationAr} والعودة.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/book" className="btn-primary !px-6 !py-3 text-base">
@@ -74,7 +74,12 @@ export default async function Home() {
                     <div className="mt-1.5 flex items-center gap-1.5 text-xs text-neutral-600">
                       <CalendarClock size={13} /> Booking: {w.openLabel} → {w.closeLabel}
                     </div>
-                    {areasForTrip(w.code).some((a) => timesFor(w.code, a)) ? (
+                    {w.direction === "return" && timesFor(w.code, areasForTrip(w.code)[0]) ? (
+                      <div className="mt-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-black/5">
+                        Departs AIU | التحرك من الجامعة:{" "}
+                        <b className="text-brand-600">{timesFor(w.code, areasForTrip(w.code)[0])!.departure}</b>
+                      </div>
+                    ) : areasForTrip(w.code).some((a) => timesFor(w.code, a)) ? (
                       <table className="mt-2.5 w-full text-xs">
                         <thead>
                           <tr className="text-neutral-500">
@@ -89,8 +94,8 @@ export default async function Home() {
                             return (
                               <tr key={a} className="border-t border-black/5">
                                 <td className="py-1 font-semibold">{AREAS[a].ar}</td>
-                                <td className="py-1">{t?.assembly ?? "—"}</td>
-                                <td className="py-1 font-bold text-brand-600">{t?.departure ?? "—"}</td>
+                                <td className="py-1">{t?.assembly ?? "TBA"}</td>
+                                <td className="py-1 font-bold text-brand-600">{t?.departure ?? "TBA"}</td>
                               </tr>
                             );
                           })}

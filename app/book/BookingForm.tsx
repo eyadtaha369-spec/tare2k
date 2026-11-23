@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Clock, Copy, Loader2, Lock, Upload } from "lucide-react";
-import { AREAS, AreaCode, PAYMENT, areasForTrip, timesFor } from "@/lib/config";
+import { AREAS, AreaCode, PAYMENT, areasForTrip, timesFor, timesText } from "@/lib/config";
 import { DIRECTION_LABEL, TripWindow, formatTripDate } from "@/lib/trips";
 
 /** Shrinks large photos in the browser so uploads stay small and fast. */
@@ -61,6 +61,7 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
   const spots = useMemo(() => (area ? AREAS[area].spots : []), [area]);
   const allowedAreas = useMemo(() => areasForTrip(trip), [trip]);
   const times = trip && area ? timesFor(trip, area) : null;
+  const isReturn = trips.find((t) => t.code === trip)?.direction === "return";
 
   // If the chosen trip doesn't serve the selected area (e.g. Delengat on Sunday morning), clear it
   useEffect(() => {
@@ -113,7 +114,7 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
         </p>
         {timesFor(done.trip.code, done.area) && (
           <p className="mt-3 text-sm font-bold">
-            Assembly {timesFor(done.trip.code, done.area)!.assembly} · Departure {timesFor(done.trip.code, done.area)!.departure}
+            {timesText(done.trip.code, done.area)}
           </p>
         )}
         <p className="mt-2 text-neutral-600" dir="rtl">
@@ -170,9 +171,11 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
 
       {/* Pickup */}
       <section className="card space-y-4 p-5">
-        <h2 className="text-lg font-extrabold">2. Pickup | نقطة الركوب</h2>
+        <h2 className="text-lg font-extrabold">
+          {isReturn ? "2. Drop-off | مكان النزول" : "2. Pickup | نقطة الركوب"}
+        </h2>
         <div>
-          <label className="label" htmlFor="area">Pickup Area <span className="label-ar">المنطقة</span></label>
+          <label className="label" htmlFor="area">{isReturn ? "Area" : "Pickup Area"} <span className="label-ar">المنطقة</span></label>
           <select
             id="area" name="area" required className="input" value={area}
             onChange={(e) => { setArea(e.target.value as AreaCode); setSpot(""); }}
@@ -184,7 +187,7 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
           </select>
         </div>
         <div>
-          <label className="label" htmlFor="pickup_spot">Pickup Spot <span className="label-ar">مكان الركوب</span></label>
+          <label className="label" htmlFor="pickup_spot">{isReturn ? "Drop-off Spot" : "Pickup Spot"} <span className="label-ar">{isReturn ? "مكان النزول" : "مكان الركوب"}</span></label>
           <select
             id="pickup_spot" name="pickup_spot" required className="input" value={spot}
             disabled={!area} onChange={(e) => setSpot(e.target.value)}
@@ -202,19 +205,29 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
         )}
         {trip && area && spot && (
           times ? (
-            <div className="grid grid-cols-2 gap-3 rounded-xl bg-ink p-4 text-white">
-              <div>
-                <div className="flex items-center gap-1 text-xs text-neutral-400"><Clock size={12} /> Assembly | التجمع</div>
-                <div className="text-2xl font-black">{times.assembly}</div>
+            times.assembly ? (
+              <div className="grid grid-cols-2 gap-3 rounded-xl bg-ink p-4 text-white">
+                <div>
+                  <div className="flex items-center gap-1 text-xs text-neutral-400"><Clock size={12} /> Assembly | التجمع</div>
+                  <div className="text-2xl font-black">{times.assembly}</div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1 text-xs text-neutral-400"><Clock size={12} /> Departure | التحرك</div>
+                  <div className="text-2xl font-black text-red-400">{times.departure}</div>
+                </div>
+                <div className="col-span-2 text-xs text-neutral-300">
+                  Please be at {AREAS[area].spots.find((x) => x.en === spot)?.ar} by the assembly time. | برجاء التواجد قبل ميعاد التجمع.
+                </div>
               </div>
-              <div>
-                <div className="flex items-center gap-1 text-xs text-neutral-400"><Clock size={12} /> Departure | التحرك</div>
+            ) : (
+              <div className="rounded-xl bg-ink p-4 text-white">
+                <div className="flex items-center gap-1 text-xs text-neutral-400"><Clock size={12} /> Departs AIU | التحرك من الجامعة</div>
                 <div className="text-2xl font-black text-red-400">{times.departure}</div>
+                <div className="mt-1 text-xs text-neutral-300">
+                  مكان النزول: {AREAS[area].spots.find((x) => x.en === spot)?.ar}
+                </div>
               </div>
-              <div className="col-span-2 text-xs text-neutral-300">
-                Please be at {AREAS[area].spots.find((x) => x.en === spot)?.ar} by the assembly time. | برجاء التواجد قبل ميعاد التجمع.
-              </div>
-            </div>
+            )
           ) : (
             <div className="rounded-xl bg-neutral-100 p-3 text-sm font-semibold text-neutral-600">
               Pickup times will be confirmed on WhatsApp. | سيتم تأكيد الميعاد على واتساب.

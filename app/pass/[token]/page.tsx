@@ -50,7 +50,13 @@ export default async function PassPage({ params }: { params: Promise<{ token: st
             <div className="font-bold">{dir.en}</div>
             <div className="text-neutral-600">{dir.ar}</div>
           </div>
-          {times && (
+          {times && !times.assembly && (
+            <div className="col-span-2 rounded-xl bg-brand-50 p-2.5">
+              <div className="text-xs font-semibold text-neutral-500">Departs AIU | التحرك من الجامعة</div>
+              <div className="text-lg font-black text-brand-600">{times.departure}</div>
+            </div>
+          )}
+          {times?.assembly && (
             <>
               <div className="rounded-xl bg-neutral-100 p-2.5">
                 <div className="text-xs font-semibold text-neutral-500">Assembly | التجمع</div>

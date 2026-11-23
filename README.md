@@ -1,6 +1,6 @@
 # TARE2K — YOUR WAY TO ALAMEIN
 
-Student bus booking system: Damanhour · Itay El Barud – Abu Hummus · Delengat ⇄ Alamein International University (AIU).
+Student bus booking system: Delengat · Itay El Barud · Damanhour · Abu Hummus · Kafr El Dawar ⇄ Alamein International University (AIU).
 
 **Stack:** Next.js 15 (App Router) · Tailwind CSS · Google Sheets + Apps Script (database) · Google Drive (receipts) · qrcode.react · html5-qrcode · jsPDF + html2canvas
 

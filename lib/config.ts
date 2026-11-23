@@ -1,3 +1,4 @@
+import { canonicalCode } from "./trips";
 // ─────────────────────────────────────────────────────────────
 //  TARE2K — business configuration (edit this file to update the app)
 // ─────────────────────────────────────────────────────────────
@@ -20,7 +21,7 @@ export const PAYMENT = {
 // Supervisor / support WhatsApp shown on the site (international format, no +)
 export const SUPPORT_WHATSAPP = "2010XXXXXXXX"; // TODO
 
-export type AreaCode = "damanhour" | "itay" | "delengat";
+export type AreaCode = "delengat" | "itay" | "damanhour" | "abu_hummus" | "kafr_eldawar";
 
 export const AREAS: Record<
   AreaCode,
@@ -32,8 +33,8 @@ export const AREAS: Record<
     spots: [{ en: "Itay Bridge", ar: "كوبرى ايتاي" }],
   },
   itay: {
-    en: "Itay - Abu Hummus",
-    ar: "ايتاي - ابو حمص",
+    en: "Itay El Barud",
+    ar: "ايتاي",
     spots: [
       { en: "Agricultural Administration", ar: "الادارة الزراعية" },
       { en: "Itay Entrance", ar: "مدخل ايتاي" },
@@ -44,6 +45,16 @@ export const AREAS: Record<
     ar: "دمنهور",
     spots: [{ en: "Governorate Entrance", ar: "مدخل المحافظة" }],
   },
+  abu_hummus: {
+    en: "Abu Hummus",
+    ar: "ابو حمص",
+    spots: [{ en: "Abu Hummus Bridge Exit", ar: "نزلة كوبري ابو حمص" }],
+  },
+  kafr_eldawar: {
+    en: "Kafr El Dawar",
+    ar: "كفر الدوار",
+    spots: [{ en: "Al-Omda Entrance", ar: "مدخل العمدة" }],
+  },
 };
 
 export const AREA_CODES = Object.keys(AREAS) as AreaCode[];
@@ -53,40 +64,56 @@ export function spotLabel(area: AreaCode, spot: string) {
   return s ? `${s.en} — ${s.ar}` : spot;
 }
 
-// ─── Bus schedules: assembly & departure time per trip/shift and area ───
-// An area missing from a trip means that area is NOT served on that trip.
-// Trips with no entry at all (return trips) show "Times TBA".
-export type Times = { assembly: string; departure: string };
+// ─── Bus schedules per trip/shift and area ───
+// • { assembly, departure } → exact times
+// • "tba"                   → area is served, times not set yet
+// • area missing            → area is NOT served on that trip (e.g. Delengat on Sunday morning)
+export type Times = { assembly?: string; departure: string };
+type Slot = Times | "tba";
 
-const PM_SHIFT: Partial<Record<AreaCode, Times>> = {
+const PM_SHIFT: Partial<Record<AreaCode, Slot>> = {
   delengat: { assembly: "3:00 PM", departure: "3:15 PM" },
   itay: { assembly: "3:00 PM", departure: "3:15 PM" },
   damanhour: { assembly: "4:00 PM", departure: "4:15 PM" },
+  abu_hummus: "tba", // TODO: outbound times
+  kafr_eldawar: "tba", // TODO: outbound times
 };
 
-export const SCHEDULE: Record<string, Partial<Record<AreaCode, Times>> | null> = {
+/** Return trips leave the university at one time for every area. */
+const fromUniversity = (departure: string): Partial<Record<AreaCode, Slot>> =>
+  Object.fromEntries(AREA_CODES.map((a) => [a, { departure }]));
+
+export const SCHEDULE: Record<string, Partial<Record<AreaCode, Slot>>> = {
   sat_out: PM_SHIFT,
   sun_am: {
     itay: { assembly: "5:30 AM", departure: "5:40 AM" },
     damanhour: { assembly: "6:00 AM", departure: "6:10 AM" },
+    abu_hummus: "tba", // TODO: confirm served on Sunday morning + times
+    kafr_eldawar: "tba", // TODO: confirm served on Sunday morning + times
   },
   sun_pm: PM_SHIFT,
-  wed_ret: null, // TODO: return times
-  thu_ret: null, // TODO: return times
+  wed_130: fromUniversity("1:30 PM"),
+  wed_330: fromUniversity("3:30 PM"),
+  thu_130: fromUniversity("1:30 PM"),
+  thu_330: fromUniversity("3:30 PM"),
 };
 
-/** Areas that can be booked on a given trip. */
+const sched = (code: string) => SCHEDULE[canonicalCode(code)];
+
+/** Areas that can be booked on a given trip (in route order). */
 export function areasForTrip(tripCode: string): AreaCode[] {
-  const s = SCHEDULE[tripCode === "sun_out" ? "sun_pm" : tripCode];
-  return s ? AREA_CODES.filter((a) => s[a]) : AREA_CODES;
+  const s = sched(tripCode);
+  return s ? AREA_CODES.filter((a) => a in s) : AREA_CODES;
 }
 
-/** Assembly/departure times for a trip + area, or null if not set. */
+/** Times for a trip + area, or null if not set yet. */
 export function timesFor(tripCode: string, area: AreaCode): Times | null {
-  return SCHEDULE[tripCode === "sun_out" ? "sun_pm" : tripCode]?.[area] ?? null;
+  const t = sched(tripCode)?.[area];
+  return t && t !== "tba" ? t : null;
 }
 
 export function timesText(tripCode: string, area: AreaCode) {
   const t = timesFor(tripCode, area);
-  return t ? `Assembly ${t.assembly} · Departure ${t.departure}` : "Times TBA";
+  if (!t) return "Times TBA";
+  return t.assembly ? `Assembly ${t.assembly} · Departure ${t.departure}` : `Departs AIU ${t.departure}`;
 }

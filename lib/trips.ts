@@ -1,8 +1,8 @@
 // Booking-window engine. All rules are evaluated on Egypt wall-clock time
 // (Africa/Cairo, DST-aware) so they behave the same on any server.
 
-export type TripCode = "sat_out" | "sun_am" | "sun_pm" | "wed_ret" | "thu_ret";
-export type Shift = "morning" | "afternoon";
+export type TripCode = "sat_out" | "sun_am" | "sun_pm" | "wed_130" | "wed_330" | "thu_130" | "thu_330";
+export type Shift = "morning" | "afternoon" | "r130" | "r330";
 export type Direction = "outbound" | "return";
 export type OverrideMode = "auto" | "open" | "closed";
 
@@ -23,8 +23,10 @@ export const TRIPS: TripDef[] = [
   { code: "sat_out", weekday: 6, direction: "outbound", en: "Saturday", ar: "السبت", shift: "afternoon", openDaysBefore: 3, closeDaysBefore: 1, openLabel: "Wed 6:00 PM", closeLabel: "Fri 6:00 PM" },
   { code: "sun_am", weekday: 0, direction: "outbound", en: "Sunday", ar: "الأحد", shift: "morning", openDaysBefore: 4, closeDaysBefore: 1, openLabel: "Wed 6:00 PM", closeLabel: "Sat 6:00 PM" },
   { code: "sun_pm", weekday: 0, direction: "outbound", en: "Sunday", ar: "الأحد", shift: "afternoon", openDaysBefore: 4, closeDaysBefore: 1, openLabel: "Wed 6:00 PM", closeLabel: "Sat 6:00 PM" },
-  { code: "wed_ret", weekday: 3, direction: "return", en: "Wednesday", ar: "الأربعاء", openDaysBefore: 3, closeDaysBefore: 1, openLabel: "Sun 6:00 PM", closeLabel: "Tue 6:00 PM" },
-  { code: "thu_ret", weekday: 4, direction: "return", en: "Thursday", ar: "الخميس", openDaysBefore: 4, closeDaysBefore: 1, openLabel: "Sun 6:00 PM", closeLabel: "Wed 6:00 PM" },
+  { code: "wed_130", weekday: 3, direction: "return", en: "Wednesday", ar: "الأربعاء", shift: "r130", openDaysBefore: 3, closeDaysBefore: 1, openLabel: "Sun 6:00 PM", closeLabel: "Tue 6:00 PM" },
+  { code: "wed_330", weekday: 3, direction: "return", en: "Wednesday", ar: "الأربعاء", shift: "r330", openDaysBefore: 3, closeDaysBefore: 1, openLabel: "Sun 6:00 PM", closeLabel: "Tue 6:00 PM" },
+  { code: "thu_130", weekday: 4, direction: "return", en: "Thursday", ar: "الخميس", shift: "r130", openDaysBefore: 4, closeDaysBefore: 1, openLabel: "Sun 6:00 PM", closeLabel: "Wed 6:00 PM" },
+  { code: "thu_330", weekday: 4, direction: "return", en: "Thursday", ar: "الخميس", shift: "r330", openDaysBefore: 4, closeDaysBefore: 1, openLabel: "Sun 6:00 PM", closeLabel: "Wed 6:00 PM" },
 ];
 
 export const DIRECTION_LABEL: Record<Direction, { en: string; ar: string }> = {
@@ -35,10 +37,16 @@ export const DIRECTION_LABEL: Record<Direction, { en: string; ar: string }> = {
 export const SHIFT_LABEL: Record<Shift, { en: string; ar: string }> = {
   morning: { en: "Morning", ar: "صباحاً" },
   afternoon: { en: "Afternoon", ar: "عصراً" },
+  r130: { en: "1:30 PM", ar: "١:٣٠ م" },
+  r330: { en: "3:30 PM", ar: "٣:٣٠ م" },
 };
 
+/** Old trip codes from earlier versions → current codes. */
+export const LEGACY_CODES: Record<string, string> = { sun_out: "sun_pm", wed_ret: "wed_130", thu_ret: "thu_130" };
+export const canonicalCode = (code: string) => LEGACY_CODES[code] ?? code;
+
 export function tripDef(code: string) {
-  return TRIPS.find((t) => t.code === (code === "sun_out" ? "sun_pm" : code)); // legacy code
+  return TRIPS.find((t) => t.code === canonicalCode(code));
 }
 
 /** "Sunday · Morning" / "الأحد (صباحاً)" */

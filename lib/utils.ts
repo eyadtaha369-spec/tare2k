@@ -56,16 +56,18 @@ export function whatsappPassLink(b: Booking) {
     `🗓️ Trip | الرحلة: ${t.en} — ${t.ar} — ${formatTripDate(b.trip_date)}`,
     `🧭 Direction | الاتجاه: ${dir.en} — ${dir.ar}`,
     `📍 Area | المنطقة: ${area.en} — ${area.ar}`,
-    `🚏 Pickup Spot | نقطة الركوب: ${spotLabel(b.area, b.pickup_spot)}`,
-    ...(times
+    `🚏 ${b.direction === "return" ? "Drop-off | مكان النزول" : "Pickup Spot | نقطة الركوب"}: ${spotLabel(b.area, b.pickup_spot)}`,
+    ...(times?.assembly
       ? [`⏰ Assembly | التجمع: ${times.assembly}`, `🚌 Departure | التحرك: ${times.departure}`]
-      : []),
+      : times
+        ? [`🚌 Departs AIU | التحرك من الجامعة: ${times.departure}`]
+        : []),
     ``,
     `🎫 Your Boarding Pass | تذكرة الركوب:`,
     passUrl,
     ``,
-    `Please be at your stop by the assembly time and show the QR code to the supervisor.`,
-    `برجاء التواجد في ميعاد التجمع وإظهار كود الـ QR للمشرف عند الركوب.`,
+    `Please be on time and show the QR code to the supervisor when boarding.`,
+    `برجاء الالتزام بالميعاد وإظهار كود الـ QR للمشرف عند الركوب.`,
     ``,
     `TARE2K — YOUR WAY TO ALAMEIN 🚌`,
   ].join("\n");
