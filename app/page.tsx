@@ -5,7 +5,7 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import TripStatusBadge from "@/components/TripStatusBadge";
 import { AREAS, AREA_CODES, BRAND, areasForTrip, timesFor } from "@/lib/config";
-import { DIRECTION_LABEL, formatTripDate } from "@/lib/trips";
+import { DIRECTION_LABEL, formatTripDate, groupByDay, shiftLabel } from "@/lib/trips";
 import { getWindows } from "@/lib/windows";
 
 export const dynamic = "force-dynamic";
@@ -61,8 +61,37 @@ export default async function Home() {
                   <span className="block text-sm font-semibold text-neutral-500">{DIRECTION_LABEL[dir].ar}</span>
                 </h3>
               </div>
+              {dir === "return" ? (
+                <ul className="space-y-3">
+                  {groupByDay(windows.filter((w) => w.direction === "return")).map((d) => (
+                    <li key={d.key} className="rounded-xl bg-neutral-50 p-3.5 ring-1 ring-black/5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-bold">
+                          {d.dayEn} <span className="text-neutral-500">| {d.dayAr}</span>
+                          <span className="ml-2 text-xs font-medium text-neutral-500">{formatTripDate(d.tripDate)}</span>
+                        </div>
+                        <TripStatusBadge open={d.isOpen} />
+                      </div>
+                      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-neutral-600">
+                        <CalendarClock size={13} /> Booking: {d.openLabel} → {d.closeLabel}
+                      </div>
+                      <div className="mt-3 text-xs font-semibold text-neutral-500">
+                        Bus leaves AIU at | مواعيد التحرك من الجامعة
+                      </div>
+                      <div className="mt-1.5 grid grid-cols-2 gap-2">
+                        {d.trips.map((t) => (
+                          <div key={t.code} className="rounded-lg bg-white py-2 text-center ring-1 ring-black/10">
+                            <div className="text-lg font-black text-brand-600" dir="ltr">{shiftLabel(t).en}</div>
+                            <div className="text-xs text-neutral-500">{shiftLabel(t).ar}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
               <ul className="space-y-3">
-                {windows.filter((w) => w.direction === dir).map((w) => (
+                {windows.filter((w) => w.direction === "outbound").map((w) => (
                   <li key={w.code} className="rounded-xl bg-neutral-50 p-3.5 ring-1 ring-black/5">
                     <div className="flex items-center justify-between">
                       <div className="font-bold">
@@ -107,6 +136,7 @@ export default async function Home() {
                   </li>
                 ))}
               </ul>
+              )}
             </div>
           ))}
         </div>

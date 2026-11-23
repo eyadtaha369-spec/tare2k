@@ -82,6 +82,8 @@ export type TripWindow = {
   en: string;
   ar: string;
   shift?: Shift;
+  dayEn: string;
+  dayAr: string;
   tripDate: string; // YYYY-MM-DD (Cairo)
   opensAt: string; // Cairo wall-clock ISO without zone
   closesAt: string;
@@ -117,6 +119,8 @@ export function computeWindows(
       en: tripLabel(t.code).en,
       ar: tripLabel(t.code).ar,
       shift: t.shift,
+      dayEn: t.en,
+      dayAr: t.ar,
       tripDate,
       opensAt: new Date(opens).toISOString().slice(0, 16),
       closesAt: new Date(closes).toISOString().slice(0, 16),
@@ -141,4 +145,37 @@ export function tripTitle(code: string, date?: string) {
   if (!t) return code;
   const dir = DIRECTION_LABEL[t.direction];
   return `${tripLabel(code).en} · ${dir.en}${date ? ` (${formatTripDate(date)})` : ""}`;
+}
+
+export type TripDay = {
+  key: string;
+  direction: Direction;
+  dayEn: string;
+  dayAr: string;
+  tripDate: string;
+  isOpen: boolean;
+  openLabel: string;
+  closeLabel: string;
+  trips: TripWindow[];
+};
+
+/** Groups trip shifts by day, e.g. Wednesday → [1:30 PM, 3:30 PM]. */
+export function groupByDay(windows: TripWindow[]): TripDay[] {
+  const out: TripDay[] = [];
+  for (const w of windows) {
+    const key = `${w.direction}-${w.tripDate}`;
+    let d = out.find((x) => x.key === key);
+    if (!d) {
+      d = { key, direction: w.direction, dayEn: w.dayEn, dayAr: w.dayAr, tripDate: w.tripDate, isOpen: false,
+        openLabel: w.openLabel, closeLabel: w.closeLabel, trips: [] };
+      out.push(d);
+    }
+    d.trips.push(w);
+    d.isOpen = d.isOpen || w.isOpen;
+  }
+  return out;
+}
+
+export function shiftLabel(w: { shift?: Shift }) {
+  return w.shift ? SHIFT_LABEL[w.shift] : { en: "Trip", ar: "الرحلة" };
 }

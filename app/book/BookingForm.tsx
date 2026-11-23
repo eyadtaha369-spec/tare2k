@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Clock, Copy, Loader2, Lock, Upload } from "lucide-react";
 import { AREAS, AreaCode, PAYMENT, areasForTrip, timesFor, timesText } from "@/lib/config";
-import { DIRECTION_LABEL, TripWindow, formatTripDate } from "@/lib/trips";
+import { DIRECTION_LABEL, TripWindow, formatTripDate, groupByDay, shiftLabel } from "@/lib/trips";
 
 /** Shrinks large photos in the browser so uploads stay small and fast. */
 async function compressImage(file: File): Promise<File> {
@@ -136,37 +136,53 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
             <Lock size={16} /> Booking for all trips is currently closed. | الحجز مغلق حالياً.
           </div>
         )}
-        <div className="grid gap-3 sm:grid-cols-2">
-          {trips.map((t) => {
-            const selected = trip === t.code;
-            return (
-              <button
-                type="button"
-                key={t.code}
-                disabled={!t.isOpen}
-                onClick={() => setTrip(t.code)}
-                className={`rounded-xl p-4 text-left ring-2 transition ${
-                  selected ? "bg-brand-50 ring-brand-500" : "bg-white ring-neutral-200 hover:ring-neutral-300"
-                } disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:opacity-70`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold">{t.en} <span className="font-semibold text-neutral-500">| {t.ar}</span></span>
-                  {selected && <CheckCircle2 size={18} className="text-brand-500" />}
-                </div>
-                <div className="text-sm text-neutral-600">
-                  {DIRECTION_LABEL[t.direction].en} · {formatTripDate(t.tripDate)}
-                </div>
-                {t.isOpen ? (
-                  <div className="mt-2 text-xs font-semibold text-emerald-700">Open until {t.closeLabel}</div>
-                ) : (
-                  <div className="mt-2 flex items-center gap-1 text-xs font-semibold text-neutral-500">
-                    <Lock size={12} /> Booking for this trip is currently closed.
+        {(["outbound", "return"] as const).map((dir) => (
+          <div key={dir} className="mb-5 last:mb-0">
+            <div className="mb-2 text-sm font-extrabold text-neutral-700">
+              {DIRECTION_LABEL[dir].en} <span className="text-neutral-400">| {DIRECTION_LABEL[dir].ar}</span>
+            </div>
+            <div className="space-y-3">
+              {groupByDay(trips.filter((t) => t.direction === dir)).map((d) => (
+                <div key={d.key}
+                  className={`rounded-xl p-4 ring-2 transition ${d.trips.some((t) => t.code === trip) ? "bg-brand-50 ring-brand-500" : d.isOpen ? "bg-white ring-neutral-200" : "bg-neutral-50 ring-neutral-200 opacity-70"}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-extrabold">
+                      {d.dayEn} <span className="font-semibold text-neutral-500">| {d.dayAr}</span>
+                      <span className="ml-2 text-xs font-medium text-neutral-500">{formatTripDate(d.tripDate)}</span>
+                    </div>
+                    {!d.isOpen && <Lock size={14} className="shrink-0 text-neutral-400" />}
                   </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                  {d.isOpen ? (
+                    <>
+                      <div className="mb-2 mt-0.5 text-xs font-semibold text-emerald-700">
+                        Open until {d.closeLabel} · {d.trips.length > 1 ? "Choose a time | اختار الميعاد" : "اختار الرحلة"}
+                      </div>
+                      <div className={`grid gap-2 ${d.trips.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+                        {d.trips.map((t) => {
+                          const sel = trip === t.code;
+                          const sh = shiftLabel(t);
+                          return (
+                            <button type="button" key={t.code} onClick={() => setTrip(t.code)}
+                              className={`relative flex flex-col items-center justify-center rounded-lg px-3 py-2 ring-2 transition ${sel ? "bg-brand-500 text-white ring-brand-500" : "bg-white text-ink ring-neutral-200 hover:ring-brand-500"}`}>
+                              {sel && <CheckCircle2 size={14} className="absolute right-2 top-2" />}
+                              <span dir="ltr" className="whitespace-nowrap text-base font-black">{sh.en}</span>
+                              <span className={`text-xs font-semibold ${sel ? "text-white/80" : "text-neutral-500"}`}>{sh.ar}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="mt-1 text-xs font-semibold text-neutral-500">
+                      Booking for this trip is currently closed. | الحجز مغلق
+                      <span className="block font-normal">Opens {d.openLabel}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
 
       {/* Pickup */}
