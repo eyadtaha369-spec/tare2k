@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { BadgeCheck, Clock, MapPin } from "lucide-react";
 import PassQR from "@/components/PassQR";
 import { sheets } from "@/lib/sheets";
-import { AREAS, AreaCode, spotLabel } from "@/lib/config";
-import { DIRECTION_LABEL, Direction, formatTripDate, tripDef } from "@/lib/trips";
+import { AREAS, AreaCode, spotLabel, timesFor } from "@/lib/config";
+import { DIRECTION_LABEL, Direction, formatTripDate, tripLabel } from "@/lib/trips";
 import { Booking, siteUrl } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,8 @@ export default async function PassPage({ params }: { params: Promise<{ token: st
   const { booking: b } = await sheets<{ booking: Booking | null }>("findByToken", { token }).catch(() => ({ booking: null }));
   if (!b || b.status !== "approved") notFound();
 
-  const t = tripDef(b.trip_code);
+  const t = tripLabel(b.trip_code);
+  const times = timesFor(b.trip_code, b.area as AreaCode);
   const dir = DIRECTION_LABEL[b.direction as Direction];
   const area = AREAS[b.area as AreaCode];
 
@@ -40,7 +41,8 @@ export default async function PassPage({ params }: { params: Promise<{ token: st
         <div className="grid grid-cols-2 gap-4 px-5 py-4 text-sm">
           <div>
             <div className="text-xs font-semibold text-neutral-500">Trip | الرحلة</div>
-            <div className="font-bold">{t?.en} · {t?.ar}</div>
+            <div className="font-bold">{t.ar}</div>
+            <div className="text-xs text-neutral-500">{t.en}</div>
             <div className="text-neutral-600">{formatTripDate(b.trip_date)}</div>
           </div>
           <div>
@@ -48,6 +50,18 @@ export default async function PassPage({ params }: { params: Promise<{ token: st
             <div className="font-bold">{dir.en}</div>
             <div className="text-neutral-600">{dir.ar}</div>
           </div>
+          {times && (
+            <>
+              <div className="rounded-xl bg-neutral-100 p-2.5">
+                <div className="text-xs font-semibold text-neutral-500">Assembly | التجمع</div>
+                <div className="text-lg font-black">{times.assembly}</div>
+              </div>
+              <div className="rounded-xl bg-brand-50 p-2.5">
+                <div className="text-xs font-semibold text-neutral-500">Departure | التحرك</div>
+                <div className="text-lg font-black text-brand-600">{times.departure}</div>
+              </div>
+            </>
+          )}
           <div className="col-span-2">
             <div className="text-xs font-semibold text-neutral-500">Pickup | نقطة الركوب</div>
             <div className="flex items-start gap-1.5 font-bold">

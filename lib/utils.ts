@@ -1,5 +1,5 @@
-import { AREAS, AreaCode, spotLabel } from "./config";
-import { DIRECTION_LABEL, Direction, formatTripDate, tripDef } from "./trips";
+import { AREAS, AreaCode, spotLabel, timesFor } from "./config";
+import { DIRECTION_LABEL, Direction, formatTripDate, tripLabel } from "./trips";
 
 /** Normalises Egyptian mobile numbers to international digits (20XXXXXXXXXX). */
 export function toIntlEgypt(phone: string) {
@@ -44,7 +44,8 @@ export function siteUrl() {
 }
 
 export function whatsappPassLink(b: Booking) {
-  const t = tripDef(b.trip_code);
+  const t = tripLabel(b.trip_code);
+  const times = timesFor(b.trip_code, b.area);
   const dir = DIRECTION_LABEL[b.direction];
   const area = AREAS[b.area];
   const passUrl = `${siteUrl()}/pass/${b.pass_token}`;
@@ -52,16 +53,19 @@ export function whatsappPassLink(b: Booking) {
     `✅ *TARE2K — Booking Confirmed | تم تأكيد الحجز*`,
     ``,
     `👤 Name | الاسم: ${b.full_name}`,
-    `🗓️ Trip | الرحلة: ${t?.en ?? ""} ${t?.ar ?? ""} — ${formatTripDate(b.trip_date)}`,
+    `🗓️ Trip | الرحلة: ${t.en} — ${t.ar} — ${formatTripDate(b.trip_date)}`,
     `🧭 Direction | الاتجاه: ${dir.en} — ${dir.ar}`,
     `📍 Area | المنطقة: ${area.en} — ${area.ar}`,
     `🚏 Pickup Spot | نقطة الركوب: ${spotLabel(b.area, b.pickup_spot)}`,
+    ...(times
+      ? [`⏰ Assembly | التجمع: ${times.assembly}`, `🚌 Departure | التحرك: ${times.departure}`]
+      : []),
     ``,
     `🎫 Your Boarding Pass | تذكرة الركوب:`,
     passUrl,
     ``,
-    `Please show the QR code to the supervisor when boarding.`,
-    `برجاء إظهار كود الـ QR للمشرف عند الركوب.`,
+    `Please be at your stop by the assembly time and show the QR code to the supervisor.`,
+    `برجاء التواجد في ميعاد التجمع وإظهار كود الـ QR للمشرف عند الركوب.`,
     ``,
     `TARE2K — YOUR WAY TO ALAMEIN 🚌`,
   ].join("\n");

@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, FileDown, Loader2, MapPin, RefreshCw } from "lucide-react";
 import TripPicker, { TripSel } from "@/components/TripPicker";
-import { AREAS, AREA_CODES, AreaCode, spotLabel } from "@/lib/config";
-import { DIRECTION_LABEL, formatTripDate, tripDef } from "@/lib/trips";
+import { AREAS, AREA_CODES, AreaCode, spotLabel, timesText } from "@/lib/config";
+import { DIRECTION_LABEL, formatTripDate, tripDef, tripLabel } from "@/lib/trips";
 import { Booking, PAYMENT_LABEL } from "@/lib/utils";
 
 const ROWS_PER_PAGE = 22;
@@ -52,6 +52,7 @@ export default function ManifestView() {
   const visible = groups.filter((g) => areaFilter === "all" || g.area === areaFilter);
   const boarded = rows.filter((r) => r.checked_in_at).length;
   const t = tripDef(trip.trip_code);
+  const tl = tripLabel(trip.trip_code);
 
   // Flatten into printable pages: area/spot header rows + passenger rows
   const pages = useMemo(() => {
@@ -91,7 +92,7 @@ export default function ManifestView() {
   }
 
   const totalVisible = visible.reduce((a, g) => a + g.total, 0);
-  const title = `${t?.en ?? ""} ${t?.ar ?? ""} — ${t ? DIRECTION_LABEL[t.direction].en : ""} — ${trip.trip_date ? formatTripDate(trip.trip_date) : ""}`;
+  const title = `${tl.ar} | ${tl.en} — ${t ? DIRECTION_LABEL[t.direction].en : ""} — ${trip.trip_date ? formatTripDate(trip.trip_date) : ""}`;
 
   return (
     <div>
@@ -99,6 +100,7 @@ export default function ManifestView() {
         <div>
           <h1 className="text-2xl font-black">Route Manifests</h1>
           <p className="text-sm text-neutral-500">كشوف الركاب حسب المنطقة ونقطة الركوب</p>
+          {trip.trip_date && <p className="mt-1 text-sm font-bold text-brand-600">{title}</p>}
         </div>
         <div className="flex gap-2">
           <button onClick={load} className="btn-ghost !py-2"><RefreshCw size={15} /></button>
@@ -136,7 +138,10 @@ export default function ManifestView() {
           {visible.filter((g) => g.total).map((g) => (
             <section key={g.area} className="card overflow-hidden">
               <div className="flex items-center justify-between bg-gradient-to-r from-brand-600 to-brand-500 px-4 py-3 text-white">
-                <div className="font-extrabold">{AREAS[g.area].en} <span className="font-semibold opacity-80">| {AREAS[g.area].ar}</span></div>
+                <div>
+                  <div className="font-extrabold">{AREAS[g.area].en} <span className="font-semibold opacity-80">| {AREAS[g.area].ar}</span></div>
+                  <div className="text-xs opacity-90">{timesText(trip.trip_code, g.area)}</div>
+                </div>
                 <span className="chip bg-white/20 text-white">{g.total} seats</span>
               </div>
               {g.spots.map((s) => (
@@ -201,6 +206,7 @@ export default function ManifestView() {
                   l.kind === "area" ? (
                     <tr key={i}><td colSpan={7} style={{ background: "#a31515", color: "#fff", padding: "6px 8px", fontWeight: 800 }}>
                       {AREAS[l.area].en} | {AREAS[l.area].ar} — {l.count} seats
+                      <span style={{ float: "right", fontWeight: 700 }}>{timesText(trip.trip_code, l.area)}</span>
                     </td></tr>
                   ) : l.kind === "spot" ? (
                     <tr key={i}><td colSpan={7} style={{ background: "#fde3e3", padding: "5px 8px", fontWeight: 700 }}>

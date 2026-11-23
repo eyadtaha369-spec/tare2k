@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Camera, CameraOff, CheckCircle2, Keyboard, Loader2, XCircle } from "lucide-react";
 import TripPicker, { TripSel } from "@/components/TripPicker";
-import { AREAS, spotLabel } from "@/lib/config";
-import { formatTripDate, tripDef } from "@/lib/trips";
+import { AREAS, spotLabel, timesText } from "@/lib/config";
+import { formatTripDate, tripLabel } from "@/lib/trips";
 import { Booking } from "@/lib/utils";
 
 type Result = {
@@ -132,7 +132,8 @@ export default function ScannerView() {
                     <div className="mt-4 w-full rounded-2xl bg-white/15 p-4 text-left">
                       <div className="text-xl font-extrabold">{b.full_name}</div>
                       <div className="text-sm opacity-90">{AREAS[b.area]?.en} — {spotLabel(b.area, b.pickup_spot)}</div>
-                      <div className="text-sm opacity-90">{tripDef(b.trip_code)?.en} · {formatTripDate(b.trip_date)}</div>
+                      <div className="text-sm opacity-90">{tripLabel(b.trip_code).ar} · {formatTripDate(b.trip_date)}</div>
+                      <div className="text-xs opacity-90">{timesText(b.trip_code, b.area)}</div>
                       {b.checked_in_at && result?.result === "already" && (
                         <div className="mt-1 text-xs opacity-90">
                           Scanned at {new Date(b.checked_in_at).toLocaleTimeString("en-GB", { timeZone: "Africa/Cairo", timeStyle: "short" })}

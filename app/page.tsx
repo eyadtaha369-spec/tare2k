@@ -4,7 +4,7 @@ import { ArrowRight, Bus, CalendarClock, MapPin, ShieldCheck, Smartphone, Wallet
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import TripStatusBadge from "@/components/TripStatusBadge";
-import { AREAS, AREA_CODES, BRAND, DEPARTURE_TIMES } from "@/lib/config";
+import { AREAS, AREA_CODES, BRAND, areasForTrip, timesFor } from "@/lib/config";
 import { DIRECTION_LABEL, formatTripDate } from "@/lib/trips";
 import { getWindows } from "@/lib/windows";
 
@@ -60,9 +60,6 @@ export default async function Home() {
                   {DIRECTION_LABEL[dir].en}
                   <span className="block text-sm font-semibold text-neutral-500">{DIRECTION_LABEL[dir].ar}</span>
                 </h3>
-                <span className="chip bg-ink text-white">
-                  Departs {dir === "outbound" ? DEPARTURE_TIMES.outbound : DEPARTURE_TIMES.return}
-                </span>
               </div>
               <ul className="space-y-3">
                 {windows.filter((w) => w.direction === dir).map((w) => (
@@ -77,6 +74,31 @@ export default async function Home() {
                     <div className="mt-1.5 flex items-center gap-1.5 text-xs text-neutral-600">
                       <CalendarClock size={13} /> Booking: {w.openLabel} → {w.closeLabel}
                     </div>
+                    {areasForTrip(w.code).some((a) => timesFor(w.code, a)) ? (
+                      <table className="mt-2.5 w-full text-xs">
+                        <thead>
+                          <tr className="text-neutral-500">
+                            <th className="text-left font-semibold">Area | المنطقة</th>
+                            <th className="text-left font-semibold">Assembly | التجمع</th>
+                            <th className="text-left font-semibold">Departure | التحرك</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {areasForTrip(w.code).map((a) => {
+                            const t = timesFor(w.code, a);
+                            return (
+                              <tr key={a} className="border-t border-black/5">
+                                <td className="py-1 font-semibold">{AREAS[a].ar}</td>
+                                <td className="py-1">{t?.assembly ?? "—"}</td>
+                                <td className="py-1 font-bold text-brand-600">{t?.departure ?? "—"}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="mt-1 text-xs text-neutral-500">Times TBA | المواعيد قريباً</div>
+                    )}
                   </li>
                 ))}
               </ul>

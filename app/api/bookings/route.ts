@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sheets } from "@/lib/sheets";
 import { getWindows } from "@/lib/windows";
-import { AREAS, AreaCode } from "@/lib/config";
+import { AREAS, AreaCode, areasForTrip } from "@/lib/config";
 import { isValidEgyptMobile, toIntlEgypt } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +40,7 @@ export async function POST(req: Request) {
   const win = (await getWindows()).find((w) => w.code === trip_code);
   if (!win) return bad("Choose a trip.");
   if (!win.isOpen) return bad("Booking for this trip is currently closed.", 409);
+  if (!areasForTrip(trip_code).includes(area)) return bad("This area isn't served on the selected shift.");
 
   try {
     const r = await sheets<{ id: string }>("createBooking", {

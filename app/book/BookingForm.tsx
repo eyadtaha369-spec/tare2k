@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Copy, Loader2, Lock, Upload } from "lucide-react";
-import { AREAS, AREA_CODES, AreaCode, PAYMENT } from "@/lib/config";
+import { CheckCircle2, Clock, Copy, Loader2, Lock, Upload } from "lucide-react";
+import { AREAS, AreaCode, PAYMENT, areasForTrip, timesFor } from "@/lib/config";
 import { DIRECTION_LABEL, TripWindow, formatTripDate } from "@/lib/trips";
 
 /** Shrinks large photos in the browser so uploads stay small and fast. */
@@ -33,7 +33,7 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<{ trip: TripWindow; name: string } | null>(null);
+  const [done, setDone] = useState<{ trip: TripWindow; name: string; area: AreaCode } | null>(null);
   const [copied, setCopied] = useState("");
 
   // Re-check windows every minute so a trip locks the moment it closes
@@ -59,6 +59,13 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
 
   const anyOpen = trips.some((t) => t.isOpen);
   const spots = useMemo(() => (area ? AREAS[area].spots : []), [area]);
+  const allowedAreas = useMemo(() => areasForTrip(trip), [trip]);
+  const times = trip && area ? timesFor(trip, area) : null;
+
+  // If the chosen trip doesn't serve the selected area (e.g. Delengat on Sunday morning), clear it
+  useEffect(() => {
+    if (area && !allowedAreas.includes(area)) { setArea(""); setSpot(""); }
+  }, [allowedAreas, area]);
 
   async function copy(text: string) {
     await navigator.clipboard?.writeText(text).catch(() => {});
@@ -79,7 +86,7 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
       const res = await fetch("/api/bookings", { method: "POST", body: fd });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Something went wrong.");
-      setDone({ trip: trips.find((t) => t.code === trip)!, name: String(fd.get("full_name")) });
+      setDone({ trip: trips.find((t) => t.code === trip)!, name: String(fd.get("full_name")), area: area as AreaCode });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setError((err as Error).message);
@@ -104,6 +111,11 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
           <b>{done.trip.en} ({formatTripDate(done.trip.tripDate)})</b> trip. Once approved, you&apos;ll receive your{" "}
           <b>Boarding Pass QR link via WhatsApp</b>.
         </p>
+        {timesFor(done.trip.code, done.area) && (
+          <p className="mt-3 text-sm font-bold">
+            Assembly {timesFor(done.trip.code, done.area)!.assembly} · Departure {timesFor(done.trip.code, done.area)!.departure}
+          </p>
+        )}
         <p className="mt-2 text-neutral-600" dir="rtl">
           بنراجع التحويل دلوقتي، وأول ما يتم التأكيد هتوصلك تذكرة الركوب (QR) على واتساب.
         </p>
@@ -116,7 +128,7 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
     <form onSubmit={onSubmit} className="space-y-6">
       {/* Trip */}
       <section className="card p-5">
-        <h2 className="mb-1 text-lg font-extrabold">1. Trip | الرحلة</h2>
+        <h2 className="mb-1 text-lg font-extrabold">1. Trip & Shift | الرحلة والميعاد</h2>
         <p className="mb-4 text-xs text-neutral-500">Only trips with an open booking window can be selected.</p>
         {!anyOpen && (
           <div className="mb-4 flex items-center gap-2 rounded-xl bg-neutral-100 p-3 text-sm font-semibold text-neutral-700">
@@ -166,8 +178,8 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
             onChange={(e) => { setArea(e.target.value as AreaCode); setSpot(""); }}
           >
             <option value="" disabled>Select area — اختار المنطقة</option>
-            {AREA_CODES.map((c) => (
-              <option key={c} value={c}>{AREAS[c].en} ({AREAS[c].ar})</option>
+            {allowedAreas.map((c) => (
+              <option key={c} value={c}>{AREAS[c].ar} — {AREAS[c].en}</option>
             ))}
           </select>
         </div>
@@ -179,10 +191,36 @@ export default function BookingForm({ initialTrips }: { initialTrips: TripWindow
           >
             <option value="" disabled>{area ? "Select spot — اختار النقطة" : "Choose an area first"}</option>
             {spots.map((s) => (
-              <option key={s.en} value={s.en}>{s.en} — {s.ar}</option>
+              <option key={s.en} value={s.en}>{s.ar} — {s.en}</option>
             ))}
           </select>
         </div>
+        {trip && !allowedAreas.includes("delengat") && (
+          <p className="text-xs font-semibold text-neutral-500">
+            Delengat isn&apos;t served on this shift. | دلنجات غير متاحة في هذا الميعاد.
+          </p>
+        )}
+        {trip && area && spot && (
+          times ? (
+            <div className="grid grid-cols-2 gap-3 rounded-xl bg-ink p-4 text-white">
+              <div>
+                <div className="flex items-center gap-1 text-xs text-neutral-400"><Clock size={12} /> Assembly | التجمع</div>
+                <div className="text-2xl font-black">{times.assembly}</div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1 text-xs text-neutral-400"><Clock size={12} /> Departure | التحرك</div>
+                <div className="text-2xl font-black text-red-400">{times.departure}</div>
+              </div>
+              <div className="col-span-2 text-xs text-neutral-300">
+                Please be at {AREAS[area].spots.find((x) => x.en === spot)?.ar} by the assembly time. | برجاء التواجد قبل ميعاد التجمع.
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-neutral-100 p-3 text-sm font-semibold text-neutral-600">
+              Pickup times will be confirmed on WhatsApp. | سيتم تأكيد الميعاد على واتساب.
+            </div>
+          )
+        )}
       </section>
 
       {/* Student details */}

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { TRIPS, TripWindow, DIRECTION_LABEL } from "@/lib/trips";
+import { TRIPS, TripWindow, DIRECTION_LABEL, tripLabel } from "@/lib/trips";
 
 export type TripSel = { trip_code: string; trip_date: string };
 
@@ -30,7 +30,7 @@ export default function TripPicker({
         }}>
         {allowAll && <option value="all">All trips | كل الرحلات</option>}
         {TRIPS.map((t) => (
-          <option key={t.code} value={t.code}>{t.en} · {DIRECTION_LABEL[t.direction].en}</option>
+          <option key={t.code} value={t.code}>{tripLabel(t.code).ar} — {tripLabel(t.code).en} · {DIRECTION_LABEL[t.direction].en}</option>
         ))}
       </select>
       {value.trip_code !== "all" && (

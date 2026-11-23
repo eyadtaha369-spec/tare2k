@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Check, ExternalLink, ImageIcon, Loader2, MessageCircle, RefreshCw, RotateCcw, X } from "lucide-react";
 import TripPicker, { TripSel } from "@/components/TripPicker";
-import { AREAS, spotLabel } from "@/lib/config";
-import { formatTripDate, tripDef, DIRECTION_LABEL } from "@/lib/trips";
+import { AREAS, spotLabel, timesText } from "@/lib/config";
+import { formatTripDate, tripLabel, DIRECTION_LABEL } from "@/lib/trips";
 import { Booking, PAYMENT_LABEL, whatsappPassLink } from "@/lib/utils";
 
 const STATUSES = [
@@ -97,7 +97,7 @@ export default function RequestsView() {
       ) : (
         <div className="grid gap-3 xl:grid-cols-2">
           {rows.map((b) => {
-            const t = tripDef(b.trip_code);
+            const t = tripLabel(b.trip_code);
             return (
               <div key={b.id} className="card p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -112,8 +112,9 @@ export default function RequestsView() {
 
                 <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   <div><dt className="text-xs text-neutral-500">Trip</dt>
-                    <dd className="font-semibold">{t?.en} · {formatTripDate(b.trip_date)}</dd>
-                    <dd className="text-xs text-neutral-500">{DIRECTION_LABEL[b.direction].en}</dd></div>
+                    <dd className="font-semibold">{t.ar} · {formatTripDate(b.trip_date)}</dd>
+                    <dd className="text-xs text-neutral-500">{t.en} · {DIRECTION_LABEL[b.direction].en}</dd>
+                    <dd className="text-xs font-semibold text-brand-600">{timesText(b.trip_code, b.area)}</dd></div>
                   <div><dt className="text-xs text-neutral-500">Pickup</dt>
                     <dd className="font-semibold">{AREAS[b.area]?.en}</dd>
                     <dd className="text-xs text-neutral-500">{spotLabel(b.area, b.pickup_spot)}</dd></div>
