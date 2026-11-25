@@ -82,6 +82,13 @@ Enforced both in the UI and on the server (`/api/bookings`), so a closed trip ca
 - The finance bar at the top of Requests shows collected revenue, refunded total, net revenue and active seats for the selected trip.
 - Ticket prices: `DEFAULT_FARE` (190 EGP) and `FARES` (Abu Hummus & Kafr El Dawar 180 EGP) in `lib/config.ts`. Each booking stores its price at booking time.
 
+## Weekly cycle
+
+- **Requests → "Start New Week / تصفير وبدء أسبوع جديد"** archives every current booking in one batch (nothing is deleted). Requests, Manifests, the finance bar and seat counts reset to 0.
+- **Archive / الأرشيف** shows each past week with collected / refunded / net totals, the full booking list, and CSV export (opens in Excel with Arabic).
+- Archived passes no longer scan, and can't be cancelled.
+- **Delete (حذف)** on any booking permanently removes the row and moves its receipt images to Drive trash.
+
 ## Security
 
 - The browser never talks to Google directly: all reads/writes go through Next.js server routes, which call Apps Script with a shared secret.

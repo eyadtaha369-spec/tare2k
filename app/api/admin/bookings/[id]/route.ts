@@ -32,3 +32,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
 }
+
+/** Permanently deletes a booking (and trashes its receipt images in Drive). */
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const staff = await getStaff();
+  if (!staff || staff.role !== "admin") return NextResponse.json({ error: "Admins only" }, { status: 403 });
+  const { id } = await params;
+  try {
+    await sheets("deleteBooking", { id });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 400 });
+  }
+}

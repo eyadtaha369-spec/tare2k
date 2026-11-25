@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Ban, Check, ExternalLink, ImageIcon, Loader2, MessageCircle, RefreshCw, RotateCcw, Undo2, Upload, Wallet, X,
+  Archive, Ban, Check, ExternalLink, ImageIcon, Loader2, MessageCircle, RefreshCw, RotateCcw, Trash2, Undo2, Upload, Wallet, X,
 } from "lucide-react";
 import TripPicker, { TripSel } from "@/components/TripPicker";
 import { AREAS, spotLabel, timesText } from "@/lib/config";
@@ -85,6 +85,44 @@ export default function RequestsView() {
     if (receipt?.id === updated.id) setReceipt(updated);
   }
 
+  async function remove(b: Booking) {
+    if (!confirm(`Permanently delete ${b.full_name}'s booking?\n\nThis removes it from the sheet and deletes its receipt. This cannot be undone.\n\nحذف الحجز نهائياً؟`)) return;
+    setBusyId(b.id);
+    setError(null);
+    const r = await fetch(`/api/admin/bookings/${b.id}`, { method: "DELETE" });
+    const j = await r.json().catch(() => ({}));
+    setBusyId(null);
+    if (!r.ok) return setError(j.error || "Delete failed.");
+    setAll((prev) => prev.filter((x) => x.id !== b.id));
+  }
+
+  const [archiving, setArchiving] = useState(false);
+  async function startNewWeek() {
+    setError(null);
+    // Count everything active (all trips) so the admin knows exactly what will be archived
+    const j = await fetch(`/api/admin/bookings?status=all&trip_code=all`, { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+    const active: Booking[] = j?.bookings ?? [];
+    if (!active.length) return alert("There are no active bookings to archive. | لا توجد حجوزات حالية.");
+    const c = (s: string) => active.filter((b) => b.status === s).length;
+    const warn = [
+      c("pending") ? `⚠️ ${c("pending")} pending request(s) not reviewed yet` : "",
+      c("refund_requested") ? `⚠️ ${c("refund_requested")} refund request(s) not processed yet` : "",
+    ].filter(Boolean).join("\n");
+    const msg =
+      `Start a new week?\n\nAll ${active.length} current bookings will move to the Archive. ` +
+      `Requests, Manifests and seat counts will reset to 0. Nothing is deleted — you can still view and export them in the Archive tab.` +
+      (warn ? `\n\n${warn}\n(They can still be found in the Archive.)` : "") +
+      `\n\nتصفير وبدء أسبوع جديد؟ كل الحجوزات الحالية هتتنقل للأرشيف.`;
+    if (!confirm(msg)) return;
+    setArchiving(true);
+    const r = await fetch("/api/admin/archive", { method: "POST" });
+    const res = await r.json().catch(() => ({}));
+    setArchiving(false);
+    if (!r.ok) return setError(res.error || "Archive failed.");
+    alert(`✅ ${res.archived} booking(s) archived. The new week starts clean. | تم بدء أسبوع جديد`);
+    load();
+  }
+
   async function act(b: Booking, action: "approve" | "reject" | "pending" | "no_show") {
     if (action === "reject" && !confirm(`Reject ${b.full_name}'s request?`)) return;
     if (action === "no_show" && !confirm(`Mark ${b.full_name} as no-show? Their pass will stop working.`)) return;
@@ -113,7 +151,13 @@ export default function RequestsView() {
           <h1 className="text-2xl font-black">Booking Requests</h1>
           <p className="text-sm text-neutral-500">طلبات الحجز والمراجعة</p>
         </div>
-        <button onClick={load} className="btn-ghost !py-2"><RefreshCw size={15} /> Refresh</button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={load} className="btn-ghost !py-2"><RefreshCw size={15} /> Refresh</button>
+          <button onClick={startNewWeek} disabled={archiving} className="btn-dark !py-2">
+            {archiving ? <Loader2 size={15} className="animate-spin" /> : <Archive size={15} />}
+            Start New Week <span className="opacity-70">| تصفير وبدء أسبوع جديد</span>
+          </button>
+        </div>
       </div>
 
       <div className="card mb-4 p-3">
@@ -121,7 +165,7 @@ export default function RequestsView() {
       </div>
 
       {/* Trip financial summary */}
-      <div className="mb-1 text-xs font-semibold text-neutral-500">Financial summary — {scopeLabel}</div>
+      <div className="mb-1 text-xs font-semibold text-neutral-500">Financial summary (current week) — {scopeLabel}</div>
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <FinCard label="Approved revenue" ar="إجمالي المحصّل" value={egp(fin.collected)} />
         <FinCard label="Total refunded" ar="إجمالي المسترد" value={egp(fin.refunded)} tone="red" />
@@ -270,6 +314,10 @@ export default function RequestsView() {
                       <RotateCcw size={15} /> Undo
                     </button>
                   )}
+
+                  <button disabled={busy} onClick={() => remove(b)} className="btn-ghost ml-auto !px-3 !py-2 text-red-600" title="Delete permanently | حذف">
+                    <Trash2 size={15} /> <span className="sr-only sm:not-sr-only">حذف</span>
+                  </button>
                 </div>
               </div>
             );

@@ -22,7 +22,9 @@ var COLS = [
   'reviewed_at', 'reviewed_by', 'checked_in_at', 'checked_in_by',
   // Payments & refunds
   'amount', 'refund_account', 'refund_reason', 'refund_requested_at',
-  'refund_amount', 'refund_ref', 'refund_receipt_file_id', 'refunded_at', 'refunded_by'
+  'refund_amount', 'refund_ref', 'refund_receipt_file_id', 'refunded_at', 'refunded_by',
+  // Weekly archive
+  'is_archived', 'archived_at', 'archive_batch'
 ];
 var CANCELLED = ['refund_requested', 'refunded'];
 var OV_COLS = ['trip_code', 'trip_date', 'mode', 'updated_at', 'updated_by'];
@@ -77,6 +79,8 @@ var ACTIONS = {
   requestRefund: requestRefund_,
   processRefund: processRefund_,
   getRefundReceipt: getRefundReceipt_,
+  archiveAll: archiveAll_,
+  deleteBooking: deleteBooking_,
   listUsers: listUsers_,
   getUserByUsername: getUserByUsername_,
   getUser: getUser_,
@@ -119,7 +123,11 @@ function createBooking_(p) {
 }
 
 function listBookings_(p) {
+  var scope = p.archived || 'active'; // active | archived | all
   var rows = readAll_().filter(function (r) {
+    var arch = r.is_archived === 'TRUE';
+    if (scope === 'active' && arch) return false;
+    if (scope === 'archived' && !arch) return false;
     if (p.status && p.status !== 'all' && r.status !== p.status) return false;
     if (p.trip_code && p.trip_code !== 'all' && r.trip_code !== p.trip_code) return false;
     if (p.trip_date && r.trip_date !== p.trip_date) return false;
@@ -176,7 +184,7 @@ function requestRefund_(p) {
     var found = findRow_('pass_token', p.token);
     if (!found) return { error: 'Pass not found.' };
     var r = found.record;
-    if (r.status !== 'approved') return { error: 'This booking can no longer be cancelled.' };
+    if (r.status !== 'approved' || r.is_archived === 'TRUE') return { error: 'This booking can no longer be cancelled.' };
     if (r.checked_in_at) return { error: 'You already boarded this trip.' };
     r.status = 'refund_requested';
     r.refund_account = p.refund_account;
@@ -215,6 +223,51 @@ function processRefund_(p) {
   }
 }
 
+/** "Start new week": archives every active booking in one batch. Nothing is deleted. */
+function archiveAll_(p) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var sh = sheet_(BOOKINGS);
+    var last = sh.getLastRow();
+    if (last < 2) return { archived: 0 };
+    var colArch = COLS.indexOf('is_archived') + 1;
+    var range = sh.getRange(2, colArch, last - 1, 3); // is_archived, archived_at, archive_batch
+    var ids = sh.getRange(2, 1, last - 1, 1).getValues();
+    var vals = range.getValues();
+    var now = new Date().toISOString();
+    var batch = p.batch || now.slice(0, 10);
+    var n = 0;
+    for (var i = 0; i < vals.length; i++) {
+      if (!ids[i][0] || str_(vals[i][0]) === 'TRUE') continue;
+      vals[i] = ['TRUE', now, batch];
+      n++;
+    }
+    range.setNumberFormat('@').setValues(vals);
+    return { archived: n, batch: batch };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Permanently deletes a booking row and moves its receipt images to Drive trash. */
+function deleteBooking_(p) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var found = findRow_('id', p.id);
+    if (!found) return { error: 'Not found' };
+    [found.record.receipt_file_id, found.record.refund_receipt_file_id].forEach(function (fid) {
+      if (!fid) return;
+      try { DriveApp.getFileById(fid).setTrashed(true); } catch (e) { /* already gone */ }
+    });
+    sheet_(BOOKINGS).deleteRow(found.row);
+    return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function getRefundReceipt_(p) {
   var found = findRow_('id', p.id);
   if (!found || !found.record.refund_receipt_file_id) return { error: 'Not found' };
@@ -233,6 +286,7 @@ function checkin_(p) {
     var found = findRow_('pass_token', p.token);
     if (!found) return { result: 'invalid', message: 'Pass not found.' };
     var b = found.record;
+    if (b.is_archived === 'TRUE') return { result: 'invalid', message: 'This pass is from a past week (archived).', booking: b };
     if (CANCELLED.indexOf(b.status) >= 0) {
       return { result: 'cancelled', message: 'CANCELLED / REFUNDED TICKET - DO NOT BOARD', booking: b };
     }

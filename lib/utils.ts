@@ -44,6 +44,10 @@ export type Booking = {
   refund_receipt_url?: string | null;
   refunded_at?: string;
   refunded_by?: string;
+  // Weekly archive
+  is_archived?: string; // "TRUE" when archived
+  archived_at?: string;
+  archive_batch?: string;
 };
 
 export type BookingStatus = "pending" | "approved" | "rejected" | "refund_requested" | "refunded" | "no_show";

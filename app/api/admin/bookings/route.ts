@@ -14,6 +14,7 @@ export async function GET(req: Request) {
       status: url.searchParams.get("status") ?? "all",
       trip_code: url.searchParams.get("trip_code") ?? "all",
       trip_date: url.searchParams.get("trip_date") ?? "",
+      archived: url.searchParams.get("archived") ?? "active", // active | archived | all
     });
     const rows = bookings.map((b) => ({
       ...b,

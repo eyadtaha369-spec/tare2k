@@ -2,13 +2,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, LogOut, QrCode, Settings2, ShieldCheck, Users } from "lucide-react";
+import { Archive, ClipboardList, LogOut, QrCode, Settings2, ShieldCheck, Users } from "lucide-react";
 
 const ITEMS = [
   { href: "/admin/requests", en: "Requests", ar: "الطلبات", icon: ClipboardList, admin: true },
   { href: "/admin/manifest", en: "Manifests", ar: "كشف الركاب", icon: Users, admin: true },
   { href: "/admin/scan", en: "Scanner", ar: "الماسح", icon: QrCode, admin: false },
   { href: "/admin/trips", en: "Trips", ar: "الرحلات", icon: Settings2, admin: true },
+  { href: "/admin/archive", en: "Archive", ar: "الأرشيف", icon: Archive, admin: true },
   { href: "/admin/supervisors", en: "Supervisors", ar: "المشرفين", icon: ShieldCheck, admin: true },
 ];
 
