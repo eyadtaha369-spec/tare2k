@@ -107,7 +107,7 @@ export const SCHEDULE: Record<string, Partial<Record<AreaCode, Slot>>> = {
   sun_am: {
     itay: { assembly: "5:30 AM", departure: "5:40 AM" },
     damanhour: { assembly: "6:00 AM", departure: "6:10 AM" },
-    desounes: "tba", // TODO: Desounes morning times
+    desounes: { assembly: "6:00 AM", departure: "6:10 AM" },
     abu_hummus: { assembly: "6:00 AM", departure: "6:10 AM" },
     kafr_eldawar: { assembly: "6:00 AM", departure: "6:10 AM" },
   },
