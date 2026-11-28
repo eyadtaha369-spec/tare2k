@@ -70,6 +70,7 @@ function doPost(e) {
 }
 
 var ACTIONS = {
+  version: function () { return { version: 3 }; },
   createBooking: createBooking_,
   listBookings: listBookings_,
   findByToken: findByToken_,

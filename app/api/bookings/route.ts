@@ -72,8 +72,22 @@ export async function POST(req: Request) {
     receiptData = { base64: Buffer.from(await receipt.arrayBuffer()).toString("base64"), mimeType: receipt.type };
   }
 
+  // Group and cash bookings need the updated Apps Script (v3+). Refuse cleanly on an older script.
+  if (passengers.length > 1 || cash) {
+    const v = await sheets<{ version: number }>("version").catch(() => null);
+    if (!v || v.version < 3) {
+      return bad("Group and cash bookings are temporarily unavailable. Please book one seat paid by transfer, or try again later.", 503);
+    }
+  }
+
   try {
     const r = await sheets<{ id: string; ids: string[] }>("createBooking", {
+      // first passenger at the top level too, so an older Apps Script still saves single bookings correctly
+      full_name: passengers[0].full_name,
+      phone: passengers[0].phone,
+      area: passengers[0].area,
+      pickup_spot: passengers[0].pickup_spot,
+      amount: passengers[0].amount,
       trip_code,
       trip_date: win.tripDate,
       direction: win.direction,
