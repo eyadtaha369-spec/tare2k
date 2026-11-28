@@ -88,6 +88,20 @@ export function tripFinance(rows: Booking[]) {
 
 export const egp = (n: number) => `${n.toLocaleString("en-US", { maximumFractionDigits: 2 })} EGP`;
 
+/** Apology message sent when the admin rejects a booking (bus full). */
+export function whatsappRejectLink(b: Booking) {
+  const t = tripLabel(b.trip_code);
+  const area = AREAS[b.area]?.ar ?? b.area;
+  const [, m, d] = b.trip_date.split("-").map(Number);
+  const msg = [
+    `أهلاً بك يا *${b.full_name}*،`,
+    `نأسف لعدم قبول طلب حجزك في رحلة *${t.ar} ${d}/${m}* (منطقة *${area}*) وذلك *بسبب اكتمال العدد* في الباص.`,
+    `في حال قمت بتحويل مبلغ الحجز مسبقاً، يرجى التواصل معنا لاسترداده فوراً.`,
+    `نتمنى رؤيتك في الرحلات القادمة — *TARE2K | YOUR WAY TO ALAMEIN*`,
+  ].join("\n");
+  return `https://wa.me/${toIntlEgypt(b.phone)}?text=${encodeURIComponent(msg)}`;
+}
+
 export function whatsappRefundLink(b: Booking) {
   const t = tripLabel(b.trip_code);
   const msg = [

@@ -9,6 +9,7 @@ import { AREAS, spotLabel, timesText } from "@/lib/config";
 import { formatTripDate, tripLabel, DIRECTION_LABEL } from "@/lib/trips";
 import {
   Booking, BookingStatus, PAYMENT_LABEL, bookingAmount, isCash, egp, tripFinance, whatsappPassLink, whatsappRefundLink,
+  whatsappRejectLink,
 } from "@/lib/utils";
 
 type Tab = BookingStatus | "all";
@@ -63,6 +64,7 @@ export default function RequestsView() {
   const [receipt, setReceipt] = useState<Booking | null>(null);
   const [refund, setRefund] = useState<Booking | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rejected, setRejected] = useState<Booking[]>([]); // just-rejected → show WhatsApp apology popup
 
   // Load every status for the selected trip; tabs and the finance bar are computed from it.
   const load = useCallback(async () => {
@@ -139,6 +141,7 @@ export default function RequestsView() {
     if (!r.ok) return setError(j.error || "Failed.");
     const upd = new Map<string, Booking>((j.bookings as Booking[]).map((x) => [x.id, x]));
     setAll((prev) => prev.map((x) => (upd.has(x.id) ? ({ ...x, ...upd.get(x.id) } as Booking) : x)));
+    if (action === "reject") setRejected(all.filter((x) => upd.has(x.id)).map((x) => ({ ...x, ...upd.get(x.id) } as Booking)));
   }
 
   async function act(b: Booking, action: "approve" | "reject" | "pending" | "no_show") {
@@ -154,7 +157,12 @@ export default function RequestsView() {
     const j = await r.json();
     setBusyId(null);
     if (!r.ok) return setError(j.error);
-    replace({ ...b, ...j.booking } as Booking);
+    const updated = { ...b, ...j.booking } as Booking;
+    replace(updated);
+    if (action === "reject") {
+      setReceipt(null);
+      setRejected([updated]);
+    }
   }
 
   const scopeLabel =
@@ -350,6 +358,12 @@ export default function RequestsView() {
                     </>
                   )}
 
+                  {b.status === "rejected" && (
+                    <a href={whatsappRejectLink(b)} target="_blank" rel="noreferrer" className="btn-wa !py-2">
+                      <MessageCircle size={15} /> Send Rejection via WhatsApp | إرسال اعتذار
+                    </a>
+                  )}
+
                   {b.status === "no_show" && (
                     <button disabled={busy} onClick={() => act(b, "approve")} className="btn-ghost !py-2" title="Restore to approved">
                       <Undo2 size={15} /> Restore
@@ -419,6 +433,34 @@ export default function RequestsView() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {rejected.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setRejected([])}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-start justify-between">
+              <div>
+                <h2 className="text-lg font-black">Request rejected | تم الرفض</h2>
+                <p className="text-sm text-neutral-500">Send the apology message on WhatsApp. | ابعت رسالة الاعتذار على واتساب.</p>
+              </div>
+              <button onClick={() => setRejected([])} aria-label="Close"><X /></button>
+            </div>
+            <div className="space-y-2">
+              {rejected.map((b) => (
+                <div key={b.id} className="flex items-center justify-between gap-2 rounded-xl bg-neutral-50 p-3 ring-1 ring-black/5">
+                  <div className="min-w-0">
+                    <div className="truncate font-bold">{b.full_name}</div>
+                    <div className="font-mono text-xs text-neutral-500" dir="ltr">+{b.phone}</div>
+                  </div>
+                  <a href={whatsappRejectLink(b)} target="_blank" rel="noreferrer" className="btn-wa shrink-0 !py-2">
+                    <MessageCircle size={15} /> إرسال اعتذار واتساب
+                  </a>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setRejected([])} className="btn-ghost mt-4 w-full">Done | تم</button>
           </div>
         </div>
       )}
