@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { Loader2, X, XCircle } from "lucide-react";
 
 export default function CancelBooking({
-  token, senderAccount, deadlineLabel,
-}: { token: string; senderAccount: string; deadlineLabel: string }) {
+  token, senderAccount, deadlineLabel, cash = false,
+}: { token: string; senderAccount: string; deadlineLabel: string; cash?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [account, setAccount] = useState(senderAccount);
@@ -36,8 +36,8 @@ export default function CancelBooking({
   return (
     <>
       <button onClick={() => setOpen(true)} className="btn w-full bg-red-600 text-white hover:bg-red-700">
-        <XCircle size={16} /> Request Cancellation & Refund
-        <span className="text-xs opacity-90">| إلغاء الحجز وطلب استرداد</span>
+        <XCircle size={16} /> {cash ? "Cancel My Seat" : "Request Cancellation & Refund"}
+        <span className="text-xs opacity-90">| {cash ? "إلغاء الحجز" : "إلغاء الحجز وطلب استرداد"}</span>
       </button>
       <p className="mt-2 text-center text-[11px] text-neutral-400">
         Available until {deadlineLabel} (when booking closes) | متاح حتى قفل الحجز
@@ -57,6 +57,7 @@ export default function CancelBooking({
               <div className="mt-1" dir="rtl">⚠️ التأكيد هيلغي مقعدك فوراً وهيوقف تذكرة الركوب (QR).</div>
             </div>
 
+{!cash && (
             <div>
               <label className="label" htmlFor="refund_account">
                 Refund to (Vodafone Cash / InstaPay) <span className="label-ar">رقم الاسترداد</span>
@@ -65,6 +66,7 @@ export default function CancelBooking({
                 onChange={(e) => setAccount(e.target.value)} />
               <p className="mt-1 text-xs text-neutral-500">Change it if you want the refund sent to another number. | غيّره لو عايز التحويل على رقم تاني.</p>
             </div>
+            )}
 
             <div>
               <label className="label" htmlFor="refund_reason">Reason (optional) <span className="label-ar">السبب (اختياري)</span></label>

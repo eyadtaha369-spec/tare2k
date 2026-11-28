@@ -6,7 +6,7 @@ import PassQR from "@/components/PassQR";
 import { sheets } from "@/lib/sheets";
 import { AREAS, AreaCode, spotLabel, timesFor } from "@/lib/config";
 import { DIRECTION_LABEL, Direction, formatTripDate, tripLabel } from "@/lib/trips";
-import { Booking, egp, siteUrl } from "@/lib/utils";
+import { Booking, bookingAmount, egp, isCash, siteUrl } from "@/lib/utils";
 import { canRequestRefund, formatCairoWall, refundDeadline } from "@/lib/refund";
 import SupportContacts from "@/components/SupportContacts";
 
@@ -18,7 +18,7 @@ export default async function PassPage({ params }: { params: Promise<{ token: st
   if (!/^[A-Za-z0-9_-]{20,}$/.test(token)) notFound();
 
   const { booking: b } = await sheets<{ booking: Booking | null }>("findByToken", { token }).catch(() => ({ booking: null }));
-  const SHOWN = ["approved", "refund_requested", "refunded", "no_show"];
+  const SHOWN = ["approved", "refund_requested", "refunded", "no_show", "cancelled"];
   if (!b || !SHOWN.includes(b.status)) notFound();
   const cancellable = canRequestRefund(b);
   const deadline = refundDeadline(b);
@@ -102,13 +102,19 @@ export default async function PassPage({ params }: { params: Promise<{ token: st
                 <Clock size={16} /> Show this to the supervisor | اعرضه على المشرف
               </div>
             )}
+            {isCash(b) && !b.checked_in_at && (
+              <div className="mt-3 w-full rounded-xl bg-emerald-50 p-3 text-center text-sm font-bold text-emerald-900 ring-1 ring-emerald-200">
+                💵 Pay {egp(bookingAmount(b))} cash to the supervisor when boarding
+                <div className="font-semibold" dir="rtl">ادفع {bookingAmount(b)} جنيه كاش للمشرف عند الركوب</div>
+              </div>
+            )}
             <p className="mt-3 text-center text-xs text-neutral-500">
               Valid for one boarding only. Do not share this pass. | صالحة لمرة ركوب واحدة.
             </p>
 
             {cancellable ? (
               <div className="mt-6 w-full border-t border-neutral-100 pt-5">
-                <CancelBooking token={token} senderAccount={b.sender_account} deadlineLabel={formatCairoWall(deadline)} />
+                <CancelBooking token={token} senderAccount={b.sender_account} cash={isCash(b)} deadlineLabel={formatCairoWall(deadline)} />
               </div>
             ) : (
               !b.checked_in_at && (
@@ -143,6 +149,13 @@ export default async function PassPage({ params }: { params: Promise<{ token: st
                   {egp(Number(b.refund_amount) || 0)} sent to <b dir="ltr">{b.refund_account || b.sender_account}</b>.
                 </p>
                 <p className="mt-1 text-xs text-emerald-800">This pass is cancelled. | هذه التذكرة ملغاة.</p>
+              </div>
+            )}
+            {b.status === "cancelled" && (
+              <div className="rounded-2xl bg-neutral-100 p-5 text-center">
+                <Ban className="mx-auto text-neutral-500" size={36} />
+                <div className="mt-2 text-lg font-black">Booking cancelled | تم إلغاء الحجز</div>
+                <p className="mt-1 text-sm text-neutral-600">Your seat was released. This pass is no longer valid. | تم إلغاء المقعد والتذكرة.</p>
               </div>
             )}
             {b.status === "no_show" && (

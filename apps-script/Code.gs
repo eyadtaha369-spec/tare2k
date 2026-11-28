@@ -24,9 +24,11 @@ var COLS = [
   'amount', 'refund_account', 'refund_reason', 'refund_requested_at',
   'refund_amount', 'refund_ref', 'refund_receipt_file_id', 'refunded_at', 'refunded_by',
   // Weekly archive
-  'is_archived', 'archived_at', 'archive_batch'
+  'is_archived', 'archived_at', 'archive_batch',
+  // Group bookings (one payment, one row + QR pass per passenger)
+  'group_id', 'group_size', 'booked_by_name', 'booked_by_phone'
 ];
-var CANCELLED = ['refund_requested', 'refunded'];
+var CANCELLED = ['refund_requested', 'refunded', 'cancelled'];
 var OV_COLS = ['trip_code', 'trip_date', 'mode', 'updated_at', 'updated_by'];
 var TZ = 'Africa/Cairo';
 
@@ -80,6 +82,7 @@ var ACTIONS = {
   processRefund: processRefund_,
   getRefundReceipt: getRefundReceipt_,
   archiveAll: archiveAll_,
+  updateGroupStatus: updateGroupStatus_,
   deleteBooking: deleteBooking_,
   listUsers: listUsers_,
   getUserByUsername: getUserByUsername_,
@@ -91,32 +94,81 @@ var ACTIONS = {
 
 /* ───────────── Bookings ───────────── */
 
+/**
+ * Creates one row per passenger. A group shares one payment (and one receipt for transfers).
+ * p.passengers = [{ full_name, phone, area, pickup_spot, amount }]  (old single-passenger payloads still work)
+ */
 function createBooking_(p) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
+    var passengers = p.passengers && p.passengers.length ? p.passengers
+      : [{ full_name: p.full_name, phone: p.phone, area: p.area, pickup_spot: p.pickup_spot, amount: p.amount }];
+
     var rows = readAll_();
-    var dup = rows.some(function (r) {
-      return r.phone === p.phone && r.trip_code === p.trip_code && r.trip_date === p.trip_date &&
-        (r.status === 'pending' || r.status === 'approved');
+    var dups = passengers.filter(function (x) {
+      return rows.some(function (r) {
+        return r.is_archived !== 'TRUE' && r.phone === x.phone && r.trip_code === p.trip_code && r.trip_date === p.trip_date &&
+          (r.status === 'pending' || r.status === 'approved');
+      });
+    }).map(function (x) { return x.phone; });
+    if (dups.length) return { error: 'duplicate:' + dups.join(',') };
+
+    var fileId = '';
+    if (p.receipt && p.receipt.base64) {
+      var blob = Utilities.newBlob(Utilities.base64Decode(p.receipt.base64), p.receipt.mimeType,
+        p.trip_date + '_' + p.trip_code + '_' + passengers[0].phone + '_x' + passengers.length);
+      fileId = receiptsFolder_().createFile(blob).getId();
+    }
+
+    var groupId = passengers.length > 1 ? Utilities.getUuid() : '';
+    var now = new Date().toISOString();
+    var sh = sheet_(BOOKINGS);
+    var out = passengers.map(function (x) {
+      return {
+        id: Utilities.getUuid(), created_at: now, status: 'pending',
+        trip_code: p.trip_code, trip_date: p.trip_date, direction: p.direction, area: x.area,
+        pickup_spot: x.pickup_spot, full_name: x.full_name, phone: x.phone,
+        sender_account: p.sender_account || '', payment_method: p.payment_method, receipt_file_id: fileId,
+        pass_token: '', reviewed_at: '', reviewed_by: '', checked_in_at: '', checked_in_by: '',
+        amount: x.amount === undefined || x.amount === null ? '' : String(x.amount),
+        group_id: groupId, group_size: groupId ? String(passengers.length) : '',
+        booked_by_name: groupId ? passengers[0].full_name : '', booked_by_phone: groupId ? passengers[0].phone : ''
+      };
     });
-    if (dup) return { error: 'duplicate' };
+    var start = sh.getLastRow() + 1;
+    sh.getRange(start, 1, out.length, COLS.length).setNumberFormat('@')
+      .setValues(out.map(function (rec) { return COLS.map(function (c) { return rec[c] === undefined ? '' : rec[c]; }); }));
+    return { ok: true, ids: out.map(function (r) { return r.id; }), id: out[0].id, group_id: groupId };
+  } finally {
+    lock.releaseLock();
+  }
+}
 
-    var id = Utilities.getUuid();
-    var bytes = Utilities.base64Decode(p.receipt.base64);
-    var blob = Utilities.newBlob(bytes, p.receipt.mimeType, p.trip_date + '_' + p.trip_code + '_' + p.phone + '_' + id.slice(0, 8));
-    var file = receiptsFolder_().createFile(blob);
-
-    var rec = {
-      id: id, created_at: new Date().toISOString(), status: 'pending',
-      trip_code: p.trip_code, trip_date: p.trip_date, direction: p.direction, area: p.area,
-      pickup_spot: p.pickup_spot, full_name: p.full_name, phone: p.phone,
-      sender_account: p.sender_account, payment_method: p.payment_method, receipt_file_id: file.getId(),
-      pass_token: '', reviewed_at: '', reviewed_by: '', checked_in_at: '', checked_in_by: '',
-      amount: p.amount === undefined || p.amount === null ? '' : String(p.amount)
-    };
-    appendText_(sheet_(BOOKINGS), COLS.map(function (c) { return rec[c]; }));
-    return { ok: true, id: id };
+/** Approve or reject every pending passenger of a group in one go. p.tokens = fresh pass tokens (one per row). */
+function updateGroupStatus_(p) {
+  if (!p.group_id) return { error: 'Missing group' };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sh = sheet_(BOOKINGS);
+    var last = sh.getLastRow();
+    if (last < 2) return { bookings: [] };
+    var vals = sh.getRange(2, 1, last - 1, COLS.length).getValues();
+    var gi = COLS.indexOf('group_id');
+    var now = new Date().toISOString();
+    var t = 0, changed = [];
+    for (var i = 0; i < vals.length; i++) {
+      if (str_(vals[i][gi]) !== p.group_id) continue;
+      var r = toRecord_(vals[i]);
+      if (r.status !== 'pending') continue;
+      r.status = p.status;
+      if (p.status === 'approved' && !r.pass_token) r.pass_token = (p.tokens || [])[t++] || '';
+      r.reviewed_at = now; r.reviewed_by = p.by || '';
+      writeRow_(i + 2, r);
+      changed.push(r);
+    }
+    return { bookings: changed };
   } finally {
     lock.releaseLock();
   }
@@ -186,7 +238,8 @@ function requestRefund_(p) {
     var r = found.record;
     if (r.status !== 'approved' || r.is_archived === 'TRUE') return { error: 'This booking can no longer be cancelled.' };
     if (r.checked_in_at) return { error: 'You already boarded this trip.' };
-    r.status = 'refund_requested';
+    // Cash-on-bus seats were never paid, so they're simply cancelled
+    r.status = r.payment_method === 'cash_on_bus' ? 'cancelled' : 'refund_requested';
     r.refund_account = p.refund_account;
     r.refund_reason = p.refund_reason || '';
     r.refund_requested_at = new Date().toISOString();
@@ -257,7 +310,10 @@ function deleteBooking_(p) {
   try {
     var found = findRow_('id', p.id);
     if (!found) return { error: 'Not found' };
-    [found.record.receipt_file_id, found.record.refund_receipt_file_id].forEach(function (fid) {
+    var shared = found.record.receipt_file_id && readAll_().some(function (r) {
+      return r.id !== found.record.id && r.receipt_file_id === found.record.receipt_file_id;
+    });
+    [shared ? '' : found.record.receipt_file_id, found.record.refund_receipt_file_id].forEach(function (fid) {
       if (!fid) return;
       try { DriveApp.getFileById(fid).setTrashed(true); } catch (e) { /* already gone */ }
     });

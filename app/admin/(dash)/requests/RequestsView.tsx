@@ -8,7 +8,7 @@ import TripPicker, { TripSel } from "@/components/TripPicker";
 import { AREAS, spotLabel, timesText } from "@/lib/config";
 import { formatTripDate, tripLabel, DIRECTION_LABEL } from "@/lib/trips";
 import {
-  Booking, BookingStatus, PAYMENT_LABEL, bookingAmount, egp, tripFinance, whatsappPassLink, whatsappRefundLink,
+  Booking, BookingStatus, PAYMENT_LABEL, bookingAmount, isCash, egp, tripFinance, whatsappPassLink, whatsappRefundLink,
 } from "@/lib/utils";
 
 type Tab = BookingStatus | "all";
@@ -19,6 +19,7 @@ const TABS: { v: Tab; en: string; ar: string }[] = [
   { v: "refund_requested", en: "Refunds", ar: "طلبات الاسترداد" },
   { v: "refunded", en: "Refunded", ar: "تم الاسترداد" },
   { v: "no_show", en: "No-show", ar: "لم يحضر" },
+  { v: "cancelled", en: "Cancelled", ar: "ملغي" },
   { v: "rejected", en: "Rejected", ar: "مرفوض" },
   { v: "all", en: "All", ar: "الكل" },
 ];
@@ -30,6 +31,7 @@ const STATUS_UI: Record<BookingStatus, { label: string; cls: string }> = {
   refund_requested: { label: "Refund requested", cls: "bg-orange-100 text-orange-800" },
   refunded: { label: "Refunded", cls: "bg-sky-100 text-sky-800" },
   no_show: { label: "No-show", cls: "bg-neutral-800 text-white" },
+  cancelled: { label: "Cancelled", cls: "bg-neutral-200 text-neutral-600" },
 };
 
 const cairo = (iso?: string | null) =>
@@ -123,6 +125,22 @@ export default function RequestsView() {
     load();
   }
 
+  async function actGroup(gid: string, action: "approve" | "reject", n: number) {
+    if (action === "reject" && !confirm(`Reject all ${n} pending passengers in this group?`)) return;
+    setBusyId(gid);
+    setError(null);
+    const r = await fetch(`/api/admin/groups/${gid}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    const j = await r.json().catch(() => ({}));
+    setBusyId(null);
+    if (!r.ok) return setError(j.error || "Failed.");
+    const upd = new Map<string, Booking>((j.bookings as Booking[]).map((x) => [x.id, x]));
+    setAll((prev) => prev.map((x) => (upd.has(x.id) ? ({ ...x, ...upd.get(x.id) } as Booking) : x)));
+  }
+
   async function act(b: Booking, action: "approve" | "reject" | "pending" | "no_show") {
     if (action === "reject" && !confirm(`Reject ${b.full_name}'s request?`)) return;
     if (action === "no_show" && !confirm(`Mark ${b.full_name} as no-show? Their pass will stop working.`)) return;
@@ -172,6 +190,12 @@ export default function RequestsView() {
         <FinCard label="Net trip revenue" ar="صافي الإيراد" value={egp(fin.net)} tone="dark" />
         <FinCard label="Active seats" ar="المقاعد المؤكدة" value={String(fin.activeSeats)} />
       </div>
+      {fin.cashSeats > 0 && (
+        <div className="-mt-2 mb-4 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-900 ring-1 ring-emerald-200">
+          💵 Cash to collect on the bus: {egp(fin.cashToCollect)} from {fin.cashSeats} passenger{fin.cashSeats > 1 ? "s" : ""} · كاش مطلوب تحصيله في الباص
+          <span className="block text-xs font-normal">Cash seats count as revenue once the passenger is scanned on board.</span>
+        </div>
+      )}
 
       {/* Status tabs */}
       <div className="mb-4 flex gap-1.5 overflow-x-auto pb-1">
@@ -199,7 +223,9 @@ export default function RequestsView() {
           {rows.map((b) => {
             const t = tripLabel(b.trip_code);
             const st = STATUS_UI[b.status] ?? STATUS_UI.pending;
-            const busy = busyId === b.id;
+            const busy = busyId === b.id || (!!b.group_id && busyId === b.group_id);
+            const groupPending = b.group_id ? all.filter((x) => x.group_id === b.group_id && x.status === "pending") : [];
+            const groupAll = b.group_id ? all.filter((x) => x.group_id === b.group_id) : [];
             return (
               <div key={b.id} className={`card p-4 ${b.status === "refund_requested" ? "ring-2 ring-orange-300" : ""}`}>
                 <div className="flex items-start justify-between gap-3">
@@ -211,6 +237,12 @@ export default function RequestsView() {
                   </div>
                   <span className={`chip shrink-0 ${st.cls}`}>{st.label}</span>
                 </div>
+                {b.group_id && (
+                  <div className="mt-2 inline-flex flex-wrap items-center gap-1 rounded-lg bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-800">
+                    👥 Group of {b.group_size || groupAll.length} · booked by {b.booked_by_name}
+                    {b.booked_by_phone && b.booked_by_phone !== b.phone && <span dir="ltr"> (+{b.booked_by_phone})</span>}
+                  </div>
+                )}
 
                 <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   <div><dt className="text-xs text-neutral-500">Trip</dt>
@@ -221,9 +253,14 @@ export default function RequestsView() {
                     <dd className="font-semibold">{AREAS[b.area]?.ar ?? b.area}</dd>
                     <dd className="text-xs text-neutral-500">{spotLabel(b.area, b.pickup_spot)}</dd></div>
                   <div><dt className="text-xs text-neutral-500">Payment</dt>
-                    <dd className="font-semibold">{PAYMENT_LABEL[b.payment_method]} · {egp(bookingAmount(b))}</dd></div>
-                  <div><dt className="text-xs text-neutral-500">Sender</dt>
-                    <dd className="break-all font-mono font-semibold" dir="ltr">{b.sender_account}</dd></div>
+                    <dd className={`font-semibold ${isCash(b) ? "text-emerald-700" : ""}`}>{PAYMENT_LABEL[b.payment_method] ?? b.payment_method} · {egp(bookingAmount(b))}</dd>
+                    {isCash(b) && <dd className="text-xs text-emerald-700">{b.checked_in_at ? "Collected on board ✓" : "Collect on the bus"}</dd>}</div>
+                  {isCash(b) ? (
+                    <div><dt className="text-xs text-neutral-500">Receipt</dt><dd className="text-xs text-neutral-500">None — pays in cash</dd></div>
+                  ) : (
+                    <div><dt className="text-xs text-neutral-500">Sender{b.group_id ? " (group transfer)" : ""}</dt>
+                      <dd className="break-all font-mono font-semibold" dir="ltr">{b.sender_account}</dd></div>
+                  )}
                 </dl>
 
                 {(b.status === "refund_requested" || b.status === "refunded") && (
@@ -259,7 +296,17 @@ export default function RequestsView() {
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <button onClick={() => setReceipt(b)} className="btn-ghost !py-2"><ImageIcon size={15} /> Receipt</button>
+                  {!isCash(b) && <button onClick={() => setReceipt(b)} className="btn-ghost !py-2"><ImageIcon size={15} /> Receipt</button>}
+                  {b.status === "pending" && groupPending.length > 1 && (
+                    <>
+                      <button disabled={busy} onClick={() => actGroup(b.group_id!, "approve", groupPending.length)} className="btn !py-2 bg-violet-600 text-white hover:bg-violet-700">
+                        {busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Approve group ({groupPending.length})
+                      </button>
+                      <button disabled={busy} onClick={() => actGroup(b.group_id!, "reject", groupPending.length)} className="btn-ghost !py-2 text-red-700">
+                        <X size={15} /> Reject group
+                      </button>
+                    </>
+                  )}
 
                   {b.status === "pending" && (
                     <>
@@ -334,6 +381,14 @@ export default function RequestsView() {
                 <div className="text-xs text-neutral-500">
                   {PAYMENT_LABEL[receipt.payment_method]} · from <span dir="ltr">{receipt.sender_account}</span>
                 </div>
+                {receipt.group_id && (() => {
+                  const g = all.filter((x) => x.group_id === receipt.group_id);
+                  return (
+                    <div className="mt-1 text-xs font-semibold text-violet-700">
+                      👥 One transfer for {g.length} passengers — expected total {egp(g.reduce((a, x) => a + bookingAmount(x), 0))}
+                    </div>
+                  );
+                })()}
               </div>
               <button onClick={() => setReceipt(null)} aria-label="Close"><X /></button>
             </div>

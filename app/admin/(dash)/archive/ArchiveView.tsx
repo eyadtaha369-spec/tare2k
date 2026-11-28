@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, FileDown, Loader2, RefreshCw } from "lucide-react";
 import { AREAS } from "@/lib/config";
 import { formatTripDate, tripLabel } from "@/lib/trips";
-import { Booking, PAYMENT_LABEL, bookingAmount, egp, tripFinance } from "@/lib/utils";
+import { Booking, PAYMENT_LABEL, bookingAmount, egp, isCollected, tripFinance } from "@/lib/utils";
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pending", approved: "Approved", rejected: "Rejected",
-  refund_requested: "Refund requested", refunded: "Refunded", no_show: "No-show",
+  refund_requested: "Refund requested", refunded: "Refunded", no_show: "No-show", cancelled: "Cancelled",
 };
 
 type Week = { batch: string; rows: Booking[]; from: string; to: string };
@@ -22,7 +22,7 @@ function toCsv(rows: Booking[]) {
   const lines = rows.map((b) => [
     b.trip_date, tripLabel(b.trip_code).en, b.direction, AREAS[b.area]?.en ?? b.area, b.pickup_spot, b.full_name,
     "0" + b.phone.replace(/^20/, ""), STATUS_LABEL[b.status] ?? b.status, PAYMENT_LABEL[b.payment_method] ?? b.payment_method,
-    b.sender_account, ["approved", "refund_requested", "refunded", "no_show"].includes(b.status) ? bookingAmount(b) : "",
+    b.sender_account, isCollected(b) ? bookingAmount(b) : "",
     b.refund_amount ?? "", b.refund_account ?? "", cairo(b.refunded_at), cairo(b.checked_in_at), cairo(b.created_at),
   ]);
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -155,7 +155,7 @@ export default function ArchiveView() {
                             <td className="px-3 py-2 font-mono text-xs" dir="ltr">+{b.phone}</td>
                             <td className="px-3 py-2">{AREAS[b.area]?.ar ?? b.area}<div className="text-xs text-neutral-500">{b.pickup_spot}</div></td>
                             <td className="px-3 py-2">{STATUS_LABEL[b.status] ?? b.status}{b.checked_in_at && " ✓"}</td>
-                            <td className="px-3 py-2">{["approved", "refund_requested", "refunded", "no_show"].includes(b.status) ? egp(bookingAmount(b)) : "—"}</td>
+                            <td className="px-3 py-2">{isCollected(b) ? egp(bookingAmount(b)) : "—"}</td>
                             <td className="px-3 py-2">{b.refund_amount ? egp(Number(b.refund_amount)) : "—"}</td>
                           </tr>
                         ))}

@@ -5,7 +5,7 @@ import { CheckCircle2, FileDown, Loader2, MapPin, RefreshCw } from "lucide-react
 import TripPicker, { TripSel } from "@/components/TripPicker";
 import { AREAS, AREA_CODES, AreaCode, spotLabel, timesText } from "@/lib/config";
 import { DIRECTION_LABEL, formatTripDate, tripDef, tripLabel } from "@/lib/trips";
-import { Booking, PAYMENT_LABEL } from "@/lib/utils";
+import { Booking, PAYMENT_LABEL, bookingAmount, isCash } from "@/lib/utils";
 
 const ROWS_PER_PAGE = 22;
 
@@ -142,7 +142,13 @@ export default function ManifestView() {
                   <div className="font-extrabold">{AREAS[g.area].en} <span className="font-semibold opacity-80">| {AREAS[g.area].ar}</span></div>
                   <div className="text-xs opacity-90">{timesText(trip.trip_code, g.area)}</div>
                 </div>
-                <span className="chip bg-white/20 text-white">{g.total} seats</span>
+                <span className="chip bg-white/20 text-white">
+                  {g.total} seats
+                  {(() => {
+                    const c = g.spots.flatMap((x) => x.rows).filter(isCash);
+                    return c.length ? ` · 💵 ${c.length} cash` : "";
+                  })()}
+                </span>
               </div>
               {g.spots.map((s) => (
                 <div key={s.spot} className="border-b border-neutral-100 last:border-0">
@@ -154,7 +160,14 @@ export default function ManifestView() {
                     {s.rows.map((b) => (
                       <li key={b.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
                         <div>
-                          <div className="font-semibold">{b.full_name}</div>
+                          <div className="font-semibold">
+                            {b.full_name}
+                            {isCash(b) && (
+                              <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold text-emerald-800">
+                                دفع في الباص (Cash) · {bookingAmount(b)}
+                              </span>
+                            )}
+                          </div>
                           <a href={`tel:+${b.phone}`} className="font-mono text-xs text-neutral-500" dir="ltr">+{b.phone}</a>
                         </div>
                         {b.checked_in_at ? (
@@ -219,7 +232,9 @@ export default function ManifestView() {
                       <td style={{ padding: "4px 6px", direction: "ltr" }}>0{l.b.phone.replace(/^20/, "")}</td>
                       <td style={{ padding: "4px 6px" }}>{AREAS[l.b.area].en}</td>
                       <td style={{ padding: "4px 6px" }}>{l.b.pickup_spot}</td>
-                      <td style={{ padding: "4px 6px" }}>Paid · {PAYMENT_LABEL[l.b.payment_method]}</td>
+                      <td style={{ padding: "4px 6px", fontWeight: isCash(l.b) ? 800 : 400, color: isCash(l.b) ? "#a31515" : undefined }}>
+                        {isCash(l.b) ? `دفع في الباص (Cash) · ${bookingAmount(l.b)} EGP` : `Paid · ${PAYMENT_LABEL[l.b.payment_method]}`}
+                      </td>
                       <td style={{ padding: "4px 6px" }}>
                         <div style={{ width: 70, height: 22, border: "1.5px solid #555", borderRadius: 3, fontSize: 9, color: "#0a7a3a", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           {l.b.checked_in_at ? "✓ QR" : ""}

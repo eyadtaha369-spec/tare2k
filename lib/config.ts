@@ -24,7 +24,7 @@ export const CONTACTS = [
   { display: "+20 101 597 7695", intl: "201015977695" },
 ];
 
-export type AreaCode = "delengat" | "itay" | "damanhour" | "abu_hummus" | "kafr_eldawar";
+export type AreaCode = "delengat" | "itay" | "damanhour" | "desounes" | "abu_hummus" | "kafr_eldawar";
 
 export const AREAS: Record<
   AreaCode,
@@ -47,6 +47,11 @@ export const AREAS: Record<
     en: "Damanhour",
     ar: "دمنهور",
     spots: [{ en: "Governorate Entrance", ar: "مدخل المحافظة" }],
+  },
+  desounes: {
+    en: "Desounes",
+    ar: "دسونس",
+    spots: [{ en: "Pedestrian Bridge", ar: "كوبري المشاه" }],
   },
   abu_hummus: {
     en: "Abu Hummus",
@@ -88,6 +93,7 @@ const PM_SHIFT: Partial<Record<AreaCode, Slot>> = {
   delengat: { assembly: "3:00 PM", departure: "3:15 PM" },
   itay: { assembly: "3:00 PM", departure: "3:15 PM" },
   damanhour: { assembly: "4:00 PM", departure: "4:15 PM" },
+  desounes: "tba", // TODO: Desounes afternoon times
   abu_hummus: { assembly: "4:00 PM", departure: "4:15 PM" },
   kafr_eldawar: { assembly: "4:00 PM", departure: "4:15 PM" },
 };
@@ -101,6 +107,7 @@ export const SCHEDULE: Record<string, Partial<Record<AreaCode, Slot>>> = {
   sun_am: {
     itay: { assembly: "5:30 AM", departure: "5:40 AM" },
     damanhour: { assembly: "6:00 AM", departure: "6:10 AM" },
+    desounes: "tba", // TODO: Desounes morning times
     abu_hummus: { assembly: "6:00 AM", departure: "6:10 AM" },
     kafr_eldawar: { assembly: "6:00 AM", departure: "6:10 AM" },
   },

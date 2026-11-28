@@ -82,7 +82,13 @@ Enforced both in the UI and on the server (`/api/bookings`), so a closed trip ca
 - The finance bar at the top of Requests shows collected revenue, refunded total, net revenue and active seats for the selected trip.
 - Ticket prices: `DEFAULT_FARE` (190 EGP) and `FARES` (Abu Hummus & Kafr El Dawar 180 EGP) in `lib/config.ts`. Each booking stores its price at booking time.
 
-## Weekly cycle
+## Payments & group bookings
+
+- **Payment methods:** Vodafone Cash / wallet, InstaPay (both need the sender number and a receipt screenshot), or **Cash on Bus / الدفع كاش في الباص** (no receipt; still needs admin approval).
+- Cash seats show **"دفع في الباص (Cash)"** in Requests, Manifests and the PDF, and the scanner shows **"COLLECT X EGP CASH"** when the passenger boards. Cash counts as revenue once the passenger is scanned.
+- Cancelling a cash seat from the pass page sets it to `cancelled` (nothing to refund).
+- **Group bookings:** up to 10 passengers per submission, one receipt for the total. Each passenger becomes their own row (linked by `group_id`) with their own QR pass and WhatsApp button. Admins can **Approve group** in one click.
+
 
 - **Requests → "Start New Week / تصفير وبدء أسبوع جديد"** archives every current booking in one batch (nothing is deleted). Requests, Manifests, the finance bar and seat counts reset to 0.
 - **Archive / الأرشيف** shows each past week with collected / refunded / net totals, the full booking list, and CSV export (opens in Excel with Arabic).

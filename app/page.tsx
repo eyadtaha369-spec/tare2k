@@ -177,8 +177,8 @@ export default async function Home() {
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: CalendarClock, en: "Pick an open trip", ar: "اختار رحلة متاحة" },
-            { icon: Wallet, en: "Transfer via Vodafone Cash or InstaPay", ar: "حوّل فودافون كاش أو إنستاباي" },
-            { icon: ShieldCheck, en: "Upload receipt — we verify it", ar: "ارفع الإيصال ونراجعه" },
+            { icon: Wallet, en: "Pay by wallet, InstaPay or cash on the bus", ar: "ادفع محفظة أو إنستاباي أو كاش في الباص" },
+            { icon: ShieldCheck, en: "We confirm your seat", ar: "بنأكد حجزك" },
             { icon: Smartphone, en: "Get your QR pass on WhatsApp", ar: "استلم تذكرة QR على واتساب" },
           ].map((s, i) => (
             <div key={i} className="card p-5">
@@ -191,8 +191,9 @@ export default async function Home() {
             </div>
           ))}
         </div>
-        <div className="mt-6 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
-          ⚠️ Cash payment on the bus is not accepted. | لا يتم قبول الدفع كاش في الأتوبيس.
+        <div className="mt-6 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-900 ring-1 ring-emerald-200">
+          👥 Book for friends too — add several passengers in one booking, each gets their own QR pass.
+          <span className="block" dir="rtl">احجز لأصحابك كمان — ضيف أكتر من راكب في حجز واحد، وكل واحد ياخد تذكرة QR خاصة بيه.</span>
         </div>
       </section>
 

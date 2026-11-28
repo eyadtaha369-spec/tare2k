@@ -5,7 +5,7 @@ import { AlertTriangle, Camera, CameraOff, CheckCircle2, Keyboard, Loader2, XCir
 import TripPicker, { TripSel } from "@/components/TripPicker";
 import { AREAS, spotLabel, timesText } from "@/lib/config";
 import { formatTripDate, tripLabel } from "@/lib/trips";
-import { Booking } from "@/lib/utils";
+import { Booking, bookingAmount } from "@/lib/utils";
 
 type Result = {
   result: "boarded" | "already" | "invalid" | "wrong_trip" | "valid" | "cancelled";
@@ -134,6 +134,11 @@ export default function ScannerView() {
                   {b && (
                     <div className="mt-4 w-full rounded-2xl bg-white/15 p-4 text-left">
                       <div className="text-xl font-extrabold">{b.full_name}</div>
+                      {b.payment_method === "cash_on_bus" && result?.result === "boarded" && (
+                        <div className="my-2 rounded-xl bg-yellow-300 px-3 py-2 text-center text-lg font-black text-ink">
+                          💵 COLLECT {bookingAmount(b)} EGP CASH · حصّل {bookingAmount(b)} جنيه كاش
+                        </div>
+                      )}
                       <div className="text-sm opacity-90">{AREAS[b.area]?.en} — {spotLabel(b.area, b.pickup_spot)}</div>
                       <div className="text-sm opacity-90">{tripLabel(b.trip_code).ar} · {formatTripDate(b.trip_date)}</div>
                       <div className="text-xs opacity-90">{timesText(b.trip_code, b.area)}</div>

@@ -12,12 +12,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   const body = await req.json().catch(() => ({}));
   const refund_account = String(body.refund_account ?? "").trim().slice(0, 80);
   const refund_reason = String(body.refund_reason ?? "").trim().slice(0, 300);
-  if (refund_account.length < 5) {
-    return NextResponse.json({ error: "Enter the Vodafone Cash / InstaPay number for the refund." }, { status: 400 });
-  }
-
   const { booking } = await sheets<{ booking: Booking | null }>("findByToken", { token }).catch(() => ({ booking: null }));
   if (!booking) return NextResponse.json({ error: "Pass not found." }, { status: 404 });
+  // Cash-on-bus seats were never paid, so no refund number is needed
+  if (booking.payment_method !== "cash_on_bus" && refund_account.length < 5) {
+    return NextResponse.json({ error: "Enter the Vodafone Cash / InstaPay number for the refund." }, { status: 400 });
+  }
   if (!canRequestRefund(booking)) {
     return NextResponse.json(
       { error: "Booking and refund window for this trip has closed." },

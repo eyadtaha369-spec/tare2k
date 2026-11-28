@@ -26,7 +26,7 @@ export type Booking = {
   full_name: string;
   phone: string;
   sender_account: string;
-  payment_method: "vodafone_cash" | "instapay";
+  payment_method: PaymentMethod;
   receipt_file_id: string;
   status: BookingStatus;
   reviewed_at: string | null;
@@ -48,9 +48,14 @@ export type Booking = {
   is_archived?: string; // "TRUE" when archived
   archived_at?: string;
   archive_batch?: string;
+  // Group bookings
+  group_id?: string;
+  group_size?: string;
+  booked_by_name?: string;
+  booked_by_phone?: string;
 };
 
-export type BookingStatus = "pending" | "approved" | "rejected" | "refund_requested" | "refunded" | "no_show";
+export type BookingStatus = "pending" | "approved" | "rejected" | "refund_requested" | "refunded" | "no_show" | "cancelled";
 
 /** Money actually collected for a booking (stored at booking time, falls back to the current fare). */
 export function bookingAmount(b: Pick<Booking, "amount" | "area">) {
@@ -58,18 +63,26 @@ export function bookingAmount(b: Pick<Booking, "amount" | "area">) {
   return Number.isFinite(n) && b.amount !== "" && b.amount !== undefined ? n : fareFor(b.area);
 }
 
-/** Statuses where the student's money was received. */
+/** Statuses where a transfer was received. */
 export const PAID_STATUSES: BookingStatus[] = ["approved", "refund_requested", "refunded", "no_show"];
 
+/** Was money actually received for this booking? Transfers: once approved. Cash on bus: once boarded. */
+export function isCollected(b: Booking) {
+  return isCash(b) ? !!b.checked_in_at && b.status === "approved" : PAID_STATUSES.includes(b.status);
+}
+
 export function tripFinance(rows: Booking[]) {
-  const collected = rows.filter((b) => PAID_STATUSES.includes(b.status)).reduce((a, b) => a + bookingAmount(b), 0);
+  const collected = rows.filter(isCollected).reduce((a, b) => a + bookingAmount(b), 0);
   const refunded = rows.filter((b) => b.status === "refunded").reduce((a, b) => a + (Number(b.refund_amount) || 0), 0);
+  const cashDue = rows.filter((b) => isCash(b) && b.status === "approved" && !b.checked_in_at);
   return {
     collected,
     refunded,
     net: collected - refunded,
     activeSeats: rows.filter((b) => b.status === "approved").length,
     pendingRefunds: rows.filter((b) => b.status === "refund_requested").length,
+    cashToCollect: cashDue.reduce((a, b) => a + bookingAmount(b), 0),
+    cashSeats: cashDue.length,
   };
 }
 
@@ -92,7 +105,13 @@ export function whatsappRefundLink(b: Booking) {
   return `https://wa.me/${toIntlEgypt(b.phone)}?text=${encodeURIComponent(msg)}`;
 }
 
-export const PAYMENT_LABEL = { vodafone_cash: "Vodafone Cash / Wallet", instapay: "InstaPay" } as const;
+export const PAYMENT_LABEL = {
+  vodafone_cash: "Vodafone Cash / Wallet",
+  instapay: "InstaPay",
+  cash_on_bus: "دفع في الباص (Cash)",
+} as const;
+export type PaymentMethod = keyof typeof PAYMENT_LABEL;
+export const isCash = (b: { payment_method: string }) => b.payment_method === "cash_on_bus";
 
 export function siteUrl() {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
@@ -120,6 +139,9 @@ export function whatsappPassLink(b: Booking) {
         ? [`🚌 Departs AIU | التحرك من الجامعة: ${times.departure}`]
         : []),
     ``,
+    ...(b.payment_method === "cash_on_bus"
+      ? [`💵 Pay ${bookingAmount(b)} EGP cash to the supervisor when boarding | ادفع ${bookingAmount(b)} جنيه كاش للمشرف عند الركوب`, ``]
+      : []),
     `🎫 Your Boarding Pass | تذكرة الركوب:`,
     passUrl,
     ``,
